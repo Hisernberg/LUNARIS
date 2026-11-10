@@ -488,3 +488,35 @@ button { font-family: var(--mono); cursor: pointer; }
 .patch.earned { border-color: rgba(232,165,75,0.7); color: var(--amber); box-shadow: 0 0 8px rgba(232,165,75,0.25); }
 .patch.earned small { color: var(--amber); }
 .drow .dv i { color: var(--faint); font-style: italic; }
+
+/* ============ v3.1: atlas / about / tour overlays ============ */
+.title-actions2 { display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.modal-card.wide { width: min(1040px, 92vw); max-height: 86vh; overflow-y: auto; }
+.atlas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.atlas-card { border: 1px solid var(--line); background: var(--panel-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.atlas-card:hover { border-color: var(--accent); }
+.atlas-head { display: flex; align-items: baseline; gap: 10px; }
+.atlas-head b { font-size: 13px; letter-spacing: 1px; }
+.atlas-icon { font-size: 20px; }
+.atlas-kind { display: block; font-size: 10px; color: var(--faint); }
+.atlas-tier { margin-left: auto; font-size: 9px; color: var(--accent); white-space: nowrap; letter-spacing: 1px; }
+.atlas-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; font-size: 11px; }
+.atlas-stats i { font-style: normal; color: var(--faint); font-size: 9px; letter-spacing: 1px; display: inline-block; width: 128px; }
+.atlas-pitch { font-size: 11px; color: var(--dim); line-height: 1.5; margin: 0; }
+.about-cols { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+.about-cols .glos { grid-template-columns: 1fr; gap: 4px; }
+.about-cols .gterm { padding: 3px 0; border: none; }
+.modal-card.tour { width: min(620px, 92vw); }
+.tour-step h2 { margin: 8px 0 4px; font-size: 22px; letter-spacing: 1px; }
+.tour-step .kicker { color: var(--accent); }
+.tour-step .note { font-size: 13px; line-height: 1.65; }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; gap: 12px; }
+.dots { display: flex; gap: 7px; }
+.dot { width: 9px; height: 9px; border: 1px solid var(--dim); transform: rotate(45deg); display: inline-block; }
+.dot.done { background: var(--dim); }
+.dot.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.tour-btns { display: flex; gap: 10px; }
+@media (max-width: 900px) { .about-cols { grid-template-columns: 1fr; } .atlas-stats i { width: 110px; } }
+.about-cols .chain { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; }
+.about-cols .chain .cause { font-size: 11px; }
+.about-cols .chain .effect { font-size: 11px; color: var(--dim); line-height: 1.5; }

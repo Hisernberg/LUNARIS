@@ -205,6 +205,10 @@ const UI = (() => {
           ${snap ? btn('RESUME LAST MISSION', 'resume', { cls: 'ghost' }) : btn('MORE WAYS TO PLAY', 'modes', { cls: 'ghost' })}
         </div>
         ${snap ? btn('MORE WAYS TO PLAY · TEAM · SANDBOX · CODES', 'modes') : ''}
+        <div class="title-actions2">
+          ${btn('MISSION ATLAS · 10 WORLDS', 'atlas', { cls: 'ghost' })}
+          ${btn('ABOUT · CHALLENGE', 'about', { cls: 'ghost' })}
+        </div>
         ${patchStrip()}
         ${board.length ? `<div class="hof-mini"><span class="th-l">HALL OF FAME</span>${board.map((b, i) =>
           `<span class="hof-row"><b>#${i + 1}</b> ${esc(b.n)} · <b class="${statusCls(b.st)}">${b.s}</b> <small>${esc(b.g)} · ${esc(b.diff)}</small></span>`).join('')}</div>` : ''}
@@ -1096,6 +1100,98 @@ const UI = (() => {
   }
   function hideModal() { const el = $('modal'); el.classList.add('hidden'); el.innerHTML = ''; }
 
+  // ---- MISSION ATLAS: every flyable world, one comparison view
+  function showAtlas() {
+    const dests = Object.values(DESTS).sort((a, b) => a.tier - b.tier);
+    const fmtTransit = d => d < 400 ? `${Math.round(d)} days` : `${(d / 365.25).toFixed(1)} years`;
+    const cards = dests.map(d => `
+      <div class="atlas-card">
+        <div class="atlas-head"><span class="atlas-icon">${d.icon}</span>
+          <div><b>${d.shortName.toUpperCase()}</b><span class="atlas-kind">${esc(d.kind)}</span></div>
+          <span class="atlas-tier">TIER ${d.tier} · ×${d.scoreMult} score</span></div>
+        <div class="atlas-stats">
+          <span><i>BUDGET</i>$${d.budget}M</span>
+          <span><i>ONE-WAY LIGHT TIME</i>${d.delayLabel}</span>
+          <span><i>BALANCED TRANSIT</i>${fmtTransit(d.transit.balanced)}</span>
+          <span><i>SOLAR FLUX</i>${d.fluxLabel.split('(')[0].trim()}</span>
+          <span><i>GRAVITY</i>${d.grav}</span>
+          <span><i>OPTIONS</i>${d.sites.length} sites · ${d.objectives.length} objectives · ${d.pool.length} hazards</span>
+        </div>
+        <p class="atlas-pitch">${esc(d.pitch)}</p>
+      </div>`).join('');
+    $('modal').innerHTML = `
+      <div class="modal-card wide">
+        <div class="rep-head"><div class="kicker">MISSION ATLAS · ${dests.length} FLYABLE WORLDS</div><button class="btn ghost" data-act="modal-close">CLOSE ✕</button></div>
+        <p class="note">Every world uses the same design loop, but the physics re-price every decision: solar flux changes the power math, one-way light time changes who can react to a hazard, and gravity + distance set the fuel bill. Higher tiers pay more score because they cost more money, time and risk.</p>
+        <div class="atlas-grid">${cards}</div>
+        <p class="fine">Balance numbers (budget, goals) are game values; physics framing (flux, light time, gravity, transit) is real, rounded, and tagged in-game.</p>
+      </div>`;
+    $('modal').classList.remove('hidden');
+  }
+
+  // ---- ABOUT: challenge alignment for judges and teachers
+  function showAbout() {
+    const ds = Object.keys(NasaData.DATASETS);
+    const learn = [
+      ['Trade-offs', 'Every subsystem spends the same three currencies - mass, power, budget - so a "better" pick always costs somewhere else.'],
+      ['Constraints, not answers', 'Design review gates launch with GO/NO-GO constraints like a real PDR, and there is rarely one perfect design - only ranked ones.'],
+      ['Risk & consequences', 'Hazards are resolved live: the safe option costs a resource, the gamble might work. Difficulty changes the odds, not the physics.'],
+      ['The Solar System is one system', 'The same spacecraft equation is re-priced across ten worlds: flux, light-time delay, radiation and gravity do the teaching.'],
+      ['Teamwork under ownership', 'Up to 4 roles own specific decisions - the console is handed over, the others argue before the owner commits.'],
+    ];
+    $('modal').innerHTML = `
+      <div class="modal-card wide">
+        <div class="rep-head"><div class="kicker">ABOUT · CHALLENGE ALIGNMENT</div><button class="btn ghost" data-act="modal-close">CLOSE ✕</button></div>
+        <div class="about-cols">
+          <div>
+            <div class="lbl">WHAT THIS IS</div>
+            <p class="note">LUNARIS is a playable mission-design loop: choose a destination, an objective and a site; engineer the spacecraft subsystem by subsystem; fly the transfer, orbit and survey; then bring the science home and face the debrief. It compresses what mission planners actually argue about - budget vs. capability, speed vs. fuel, autonomy vs. ground-in-the-loop - into decisions a first-time player can feel in one 20-minute mission.</p>
+            <div class="lbl">WHAT YOU LEARN</div>
+            ${learn.map(([t, d]) => `<div class="chain"><span class="cause">${esc(t)}</span><span class="effect">${esc(d)}</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="lbl">REAL NASA DATA INSIDE (${ds.length} datasets · ${NasaData.count()} values)</div>
+            <div class="glos">${ds.map(k => `<div class="gterm"><b>${esc(k)}</b></div>`).join('')}</div>
+            <p class="note">Insight boxes on every decision screen show NASA DATA → MEANING → GAME EFFECT, so numbers are never decorative: the escape velocity you read about is the one your TLI burn has to beat.</p>
+            <div class="lbl">BUILT FOR THE CLASSROOM & THE CAFETERIA</div>
+            <p class="note">Runs in any browser with no install (an offline zip works too), autosaves and resumes mid-mission, supports a 4-player hot-seat crew on one laptop, ships difficulty tiers from CADET to VETERAN, and every screen answers "?" with a plain-words glossary. Challenge codes let players share a fixed starting design as a competitive benchmark.</p>
+          </div>
+        </div>
+      </div>`;
+    $('modal').classList.remove('hidden');
+  }
+
+  // ---- FIRST-RUN TOUR: four cards, once per browser
+  const TOUR = [
+    { k: 'THE MISSION LOOP', t: 'One Loop, Seven Stages', b: 'The tracker on top is your map: CHOOSE → ENGINEER → OPERATE → RETURN → EXPLAIN. Every screen is one real mission-planning decision - where to go, what to ask, which spacecraft to build, how fast to travel, how to react when something breaks.' },
+    { k: 'ENGINEERING', t: 'Design Against Constraints', b: 'Eight subsystems, one budget. Tiles under each pick show live margins; the design review gates launch like a real GO/NO-GO. There is rarely one perfect design - yours is one valid answer, and your score ranks it.' },
+    { k: 'FLYING IT', t: 'Hazards, Lag and Luck', b: 'During cruise and survey, hazards offer a safe response (costs a resource) and a risky one. Far worlds answer slowly - light-time delay is real. In team mode, specific roles own specific calls; hazards always belong to Operations.' },
+    { k: 'AFTER THE FLIGHT', t: 'Score, Share, Compare', b: 'Science returned × mission status × efficiency = points and a grade. Copy a mission code to challenge a friend with your exact design, or open SANDBOX to re-price any world under a budget crisis or instrument failure.' },
+  ];
+  function showTour(step) {
+    const s = TOUR[step];
+    const dots = TOUR.map((_, i) => `<span class="dot ${i === step ? 'on' : i < step ? 'done' : ''}"></span>`).join('');
+    $('modal').innerHTML = `
+      <div class="modal-card tour">
+        <div class="rep-head"><div class="kicker">WELCOME · 60-SECOND BRIEFING</div><button class="btn ghost" data-act="tour-skip">SKIP</button></div>
+        <div class="tour-step">
+          <div class="kicker">${s.k}</div>
+          <h2>${s.t}</h2>
+          <p class="note">${s.b}</p>
+        </div>
+        <div class="tour-foot">
+          <div class="dots">${dots}</div>
+          <div class="tour-btns">
+            ${step > 0 ? btn('BACK', 'tour-prev', { cls: 'ghost' }) : ''}
+            ${btn(step === TOUR.length - 1 ? 'FLY YOUR FIRST MISSION ▲' : 'NEXT ▸', 'tour-next', { cls: 'go', primary: true })}
+          </div>
+        </div>
+        <p class="fine">Every screen answers "?" with a plain-words glossary. This briefing shows once - open ABOUT any time from the title.</p>
+      </div>`;
+    $('modal').classList.remove('hidden');
+  }
+  function tourSeen() { try { localStorage.setItem('lunaris-seen', '1'); } catch (e) { /* ignore */ } Game.tour = null; hideModal(); }
+
   function copyText(txt, label) {
     const done = () => toast(label, [{ t: '▲ Copied to clipboard · paste it in a chat to challenge someone', tone: 'good' }]);
     const fail = () => toast(label, [{ t: '▼ Clipboard blocked - copy the URL bar instead (code included)', tone: 'bad' }]);
@@ -1194,5 +1290,6 @@ const UI = (() => {
   function hideToast() { $('toast').classList.remove('show'); }
 
   return { render, hud, toast, hideToast, setMuteLabel, tickFact, POLL_COUNT,
-           showHandover, hideHandover, showGlossary, hideModal, copyText };
+           showHandover, hideHandover, showGlossary, showAtlas, showAbout, showTour,
+           tourSeen, hideModal, copyText };
 })();

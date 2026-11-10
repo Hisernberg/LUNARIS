@@ -57,6 +57,12 @@ and receives a **visual scientific debrief** explaining why the mission succeede
 
 **Also in v2:** autosave + RESUME, first-run coaching tips per phase, a 19-term mission glossary (`?`), a resource-timeline chart (power/fuel/science/risk across the whole mission) in the report, a local Hall of Fame, reduced-motion support and keyboard access (1–4 pick options, M mute, ? glossary).
 
+## v3.1 · ONBOARDING & JUDGE SURFACES
+
+- **60-second first-run briefing** — four cards (the loop, engineering, flying, scoring) shown once per browser; skip/finish/ESC all dismiss it for good. Built for anyone opening the app cold: judges, students, family.
+- **Mission Atlas** (`MISSION ATLAS · 10 WORLDS` on the title) — every flyable world on one comparison screen: budget, one-way light time, balanced transit, solar flux, gravity, option counts and the one-line pitch, tier-sorted. The "same loop, re-priced physics" story in a single glance.
+- **About · Challenge Alignment** — what the game is, the five things it teaches, all 15 NASA datasets with the live value count, and the classroom/accessibility story (offline zip, hot-seat crew, difficulty tiers, glossary).
+
 ## Play it in 30 seconds
 
 No installation, no build step, no internet connection needed.

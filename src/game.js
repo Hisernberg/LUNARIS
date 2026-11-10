@@ -44,7 +44,12 @@ function syncDeploys(instant) {
 }
 
 const ENTER = {
-  TITLE() { resetMission(); Game.sel = newSel(); Game.deploys = {}; Game.foldAt = {}; Game.travelMode = null; Game.hazard = null; Game.hazardFired = {}; Game.focusBody = null; Game.hoverBody = null; Draw.clearParticles(); },
+  TITLE() {
+    resetMission(); Game.sel = newSel(); Game.deploys = {}; Game.foldAt = {}; Game.travelMode = null; Game.hazard = null; Game.hazardFired = {}; Game.focusBody = null; Game.hoverBody = null; Draw.clearParticles();
+    // first-run briefing: shown once per browser (skip / finish / ESC all mark it seen)
+    let seen = false; try { seen = !!localStorage.getItem('lunaris-seen'); } catch (e) { seen = false; }
+    if (!seen) { Game.tour = 0; UI.showTour(0); } else Game.tour = null;
+  },
   EXPLORE() {
     Game.focusBody = null;
     Draw.Cam.tween(0, 0.4, 1, 1.4);
@@ -307,7 +312,20 @@ const ACTIONS = {
   'handover-ready'() { Sfx.confirm(); Team.ready(); },
   'handover-skip'() { Sfx.click(); Team.skip(); },
   glossary() { Sfx.click(); UI.showGlossary(); },
-  'modal-close'() { Sfx.click(); UI.hideModal(); },
+  atlas() { Sfx.click(); UI.showAtlas(); },
+  about() { Sfx.click(); UI.showAbout(); },
+  'modal-close'() {
+    Sfx.click();
+    if (Game.tour != null) UI.tourSeen();   // closing the briefing by any means counts as seen
+    else UI.hideModal();
+  },
+  'tour-prev'() { const p = Math.max(0, (Game.tour | 0) - 1); Game.tour = p; UI.showTour(p); },
+  'tour-next'() {
+    const n = (Game.tour | 0) + 1;
+    if (n > 3) { Sfx.confirm(); UI.tourSeen(); return; }
+    Sfx.click(); Game.tour = n; UI.showTour(n);
+  },
+  'tour-skip'() { Sfx.click(); UI.tourSeen(); },
   'tip-dismiss'() { SEEN.mark(Game.state); Sfx.click(); UI.render(); },
   'copy-share'() {
     Sfx.click();
