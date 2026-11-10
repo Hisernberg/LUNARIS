@@ -240,6 +240,11 @@ const UI = (() => {
   // ---- TEAM SETUP: 2-4 players, unique roles, editable names
   P.TEAMSETUP = () => {
     const allRoles = Object.keys(ROLE_META);
+    const diffs = Object.values(DIFFS).map(d => `
+      <button class="diffcard mini ${Game.diffPick === d.id ? 'selected' : ''}" data-act="set-diff" data-diff="${d.id}" aria-pressed="${Game.diffPick === d.id}">
+        <span class="dc-name"><span>${d.name} <i>×${d.mult} score</i></span></span>
+        <span class="dc-stat">${d.blurb.split('.')[0]}.</span>
+      </button>`).join('');
     const rows = Team.draft.map((p, i) => {
       const others = Team.draft.filter((_, j) => j !== i).map(q => q.role);
       const free = allRoles.filter(r => !others.includes(r) || r === p.role);
@@ -255,6 +260,8 @@ const UI = (() => {
     return {
       cls: 'right', html: `
       ${header('MISSION CONTROL · TEAM', 'Assemble the Flight Crew', '2-4 players share one console (hot-seat). Each role owns its decisions; the others argue, the owner commits.')}
+      <div class="lbl">DIFFICULTY · THE CREW'S PRESSURE LEVEL</div>
+      <div class="opts compact">${diffs}</div>
       ${rows}
       ${Team.draft.length < 4 ? `<button class="link" data-act="team-add">+ add player</button>` : ''}
       <div class="lbl">WHO DECIDES WHAT</div>
@@ -475,7 +482,8 @@ const UI = (() => {
       ${header('ENGINEER · VALIDATION', 'Design Review', rv.ok ? 'All critical constraints satisfied. Objective fit shown for information.' : 'Launch blocked: one or more critical constraints violated.')}
       <div class="checks">${rows}</div>
       <div class="verdict ${rv.ok ? 'ok' : 'bad'}">${rv.ok ? 'GO FOR LAUNCH' : 'NO-GO · RETURN TO DESIGN'}</div>
-      ${rv.ok ? `<p class="note">Save or share this design: a mission code packs difficulty, condition, objective, site and every subsystem into one link.</p>
+      ${rv.ok ? `<p class="note">This is <b>a</b> good design, not <b>the only</b> one: other subsystem combinations pass this review for the same objective — mission engineering is a space of valid answers, ranked by your score.</p>
+      <p class="note">Save or share this design: a mission code packs difficulty, condition, objective, site and every subsystem into one link.</p>
       <div class="actions">${btn('COPY MISSION CODE · CHALLENGE A FRIEND', 'copy-share', { cls: 'ghost' })}</div>` : ''}
       ${rv.ok ? threatStrip() : ''}
       <div class="actions">

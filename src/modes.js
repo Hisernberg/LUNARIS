@@ -138,8 +138,12 @@ const SHARE = {
   },
   unpack(str) {
     try {
-      const b64 = str.trim().replace(/^LUN2-/, '').replace(/-/g, '+').replace(/_/g, '/');
-      const json = decodeURIComponent(escape(atob(b64)));
+      // accept a bare code, a relative path (#m=…) or a full pasted URL
+      let s = String(str).trim();
+      const at = s.indexOf('#m=');
+      if (at >= 0) s = s.slice(at + 3);
+      s = s.replace(/^LUN2-/, '').replace(/-/g, '+').replace(/_/g, '/');
+      const json = decodeURIComponent(escape(atob(s)));
       return JSON.parse(json);
     } catch (e) { return null; }
   },

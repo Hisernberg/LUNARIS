@@ -23,7 +23,9 @@ Game.go = function (state) {
   this.sceneT = 0; this.phase = ''; this.phaseT = 0;
   this.preview = null; this.choice = null;
   if (state === 'REPORT' || state === 'TITLE' || state === 'DESIGN') UI.hideToast();
-  if (state === 'TITLE' || state === 'REPORT') SAVE.clear(); else SAVE.store(state);
+  // the autosave must survive a page reload (RESUME) - clear it only when a
+  // mission finishes (REPORT) or a fresh one starts (mode-start / sandbox / team)
+  if (state === 'REPORT') SAVE.clear(); else SAVE.store(state);
   const enter = ENTER[state];
   if (enter) enter();
   UI.render();
@@ -348,6 +350,7 @@ const ACTIONS = {
     runOwned(GROUP_OWNER[g] || 'director', () => {
       const isNew = !Game.sel[g];
       Game.sel[g] = id;
+      SAVE.store(Game.state);   // keep the resume snapshot in sync with every subsystem choice
       if (isNew && DEPLOY_KEYS.includes(g)) {
         Game.foldAt[g] = Game.t; Game.deploys[g] = 0;
         Game.foldFlash = Game.t;
@@ -430,6 +433,7 @@ const ACTIONS = {
   'pick-cond'(el) {
     if (MODE_CFG.mode !== 'sandbox') return;
     resetMission(el.dataset.id);       // re-rolls budget etc. for the chosen condition
+    SAVE.store(Game.state);            // keep the autosave snapshot in sync
     Sfx.select();
     UI.render();
   },

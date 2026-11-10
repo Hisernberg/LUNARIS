@@ -473,3 +473,7 @@ button { font-family: var(--mono); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* compact difficulty cards (team setup) */
+.diffcard.mini { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.diffcard.mini .dc-stat { font-size: 9px; color: var(--faint); line-height: 1.45; }
