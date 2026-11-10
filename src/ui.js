@@ -28,6 +28,10 @@ const UI = (() => {
     return `<div class="drow"${src(r)}><span class="dl">${label}</span><span class="dv">${fmt ? fmt(v, r) : v}${tag(conf || r.confidence)}</span></div>`;
   }
 
+  function siteFacts(reg) {
+    return (reg.facts || []).map(f => `<div class="drow"><span class="dl">${esc(f.k)}</span><span class="dv">${esc(f.v)}${tag(f.tag || 'approx')}</span></div>`).join('');
+  }
+
   function halfDay() {
     const syn = NasaData.num('Synodic period (sunrise to sunrise)');
     return isNaN(syn) ? null : (syn / 2).toFixed(1);
@@ -172,6 +176,17 @@ const UI = (() => {
   // ------------------------------------------------------------ panels per state
   const P = {};
 
+  // Mission patches: one per destination completed with SUCCESS.
+  function patchStrip() {
+    const ids = DEST_ORDER;
+    const got = ACH.count();
+    const cells = ids.map(id => {
+      const d = DESTS[id], a = ACH.forDest(id);
+      return `<span class="patch ${a ? 'earned' : ''}" title="${esc(d.name)}${a ? ` - best score ${a.score} (${a.grade}) ${a.at}` : ' - not yet flown to SUCCESS'}">${d.icon}<small>${a ? a.grade : '·'}</small></span>`;
+    }).join('');
+    return `<div class="patchrow"><span class="th-l">MISSION PATCHES ${got}/${ids.length}</span>${cells}</div>`;
+  }
+
   P.TITLE = () => {
     const n = NasaData.count();
     const board = BOARD.top(3);
@@ -182,14 +197,15 @@ const UI = (() => {
         <div class="kicker">NASA SPACE APPS CHALLENGE 2026 · SPACE MISSION DESIGN GAME</div>
         <h1>LUNARIS</h1>
         <div class="title-sub">DESIGN BEYOND EARTH</div>
-        <p class="tagline">Explore the solar system. Choose the mission. Engineer the spacecraft. Discover the consequences.<br>
-        A continuous engineering story - solo, in a team of up to four, or against a friend's design.</p>
+        <p class="tagline">Ten worlds. One design loop. Pick a destination - from the Moon 3 days out to Pluto 9.5 years out - choose the question, engineer the spacecraft, and fly the consequences.<br>
+        Solo, in a team of up to four, or against a friend's design.</p>
         <div class="title-actions">
           ${btn('EXPLORE THE SOLAR SYSTEM', 'explore', { cls: 'go', primary: true })}
           ${btn('FLY A QUICK MISSION', 'start')}
           ${snap ? btn('RESUME LAST MISSION', 'resume', { cls: 'ghost' }) : btn('MORE WAYS TO PLAY', 'modes', { cls: 'ghost' })}
         </div>
         ${snap ? btn('MORE WAYS TO PLAY · TEAM · SANDBOX · CODES', 'modes') : ''}
+        ${patchStrip()}
         ${board.length ? `<div class="hof-mini"><span class="th-l">HALL OF FAME</span>${board.map((b, i) =>
           `<span class="hof-row"><b>#${i + 1}</b> ${esc(b.n)} · <b class="${statusCls(b.st)}">${b.s}</b> <small>${esc(b.g)} · ${esc(b.diff)}</small></span>`).join('')}</div>` : ''}
         <p class="fine">${n ? `${Object.keys(NasaData.DATASETS).length} NASA-sourced datasets loaded · ${n} values (${NasaData.origin === 'csv' ? 'local CSV' : 'embedded copy of local CSV'})` : '⚠ datasets could not be loaded'} · Sound optional (M) · Glossary (?)</p>
@@ -232,8 +248,8 @@ const UI = (() => {
       <div class="codeline"><input id="code-input" type="text" placeholder="paste LUN2-… code or full link" spellcheck="false"><button class="btn" data-act="code-load">LOAD</button></div>
       ${board.length ? `
       <div class="lbl">HALL OF FAME · TOP ${board.length} <button class="link" data-act="board-clear">clear</button></div>
-      <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>DIFF</th><th>CONDITION</th><th>DATE</th></tr>
-      ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${esc(b.diff || '')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>` : ''}
+      <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>DIFF</th><th>WORLD</th><th>CONDITION</th><th>DATE</th></tr>
+      ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${esc(b.diff || '')}</td><td>${esc(b.dest || 'Moon')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>` : ''}
       ${btn('BACK TO TITLE', 'title', { cls: 'ghost' })}` };
   };
 
@@ -345,18 +361,51 @@ const UI = (() => {
       <div class="lbl">OBJECTIVES · ALL THREE FOR FULL SUCCESS</div>
       ${objectiveList()}
       <div class="kvs">
-        <div class="kv"><span>Budget cap</span><b>$${budgetCap()}M</b></div>
-        <div class="kv"><span>Science goal</span><b>${scienceGoal()}</b></div>
-        <div class="kv"><span>In-flight hazards</span><b>2 random · odds shown before launch</b></div>
+        <div class="kv"><span>Budget cap</span><b>set by destination · Moon $100M → Pluto $160M</b></div>
+        <div class="kv"><span>Science goal</span><b>scales with the world · base ${RULES.scienceGoal}</b></div>
+        <div class="kv"><span>In-flight hazards</span><b>2 random per world · odds shown before launch</b></div>
         <div class="kv"><span>Risk</span><b>≥ ${RULES.riskHigh} data loss · ≥ ${RULES.riskCritical} lost</b></div>
       </div>
       <p class="note">▲ benefit · ▼ cost. Every option shows both before you commit. Budget, power, fuel and risk figures are a simplified game model.</p>
-      ${btn('CHOOSE THE SCIENCE OBJECTIVE', 'to-objective', { cls: 'go', primary: true })}
+      ${btn('CHOOSE THE DESTINATION WORLD', 'to-destination', { cls: 'go', primary: true })}
       <div class="actions">${btn('HOW TO PLAY · GLOSSARY', 'glossary', { cls: 'ghost' })}${btn('CHANGE MODE', 'modes', { cls: 'ghost' })}</div>` };
   };
 
+  P.DESTINATION = () => {
+    const opts = DEST_ORDER.map((id, k) => {
+      const d = DESTS[id], on = M.dest === id;
+      const fluxBad = d.flux < 0.3;
+      return option({
+        id, key: k < 9 ? k + 1 : 0, name: `${d.icon} ${d.name}`, badge: `SCORE ×${d.scoreMult}`,
+        desc: on ? `<i>${d.pitch}</i>` : '',
+        chips: on ? [
+          { t: `⏱ ${d.transit.balanced < 10 ? d.transit.balanced + ' days' : Math.round(d.transit.balanced / 30.44) + ' months'} balanced transit`, tone: 'neutral' },
+          { t: `📡 light time ${d.delayLabel}`, tone: 'neutral' },
+          { t: `${fluxBad ? '▼' : '▲'} solar ${d.fluxLabel}`, tone: fluxBad ? 'bad' : 'good' },
+          { t: (d.rad >= 2 ? '▼ ' : '• ') + `radiation: ${d.radLabel}`, tone: d.rad >= 2 ? 'bad' : 'neutral' },
+          { t: `⤓ gravity ${d.grav}`, tone: 'neutral' },
+          { t: `💲 budget $${d.budget}M norm`, tone: 'neutral' },
+        ] : [{ t: d.kind, tone: 'neutral' }],
+        selected: on,
+      });
+    }).join('');
+    const d = destOf();
+    const detail = M.dest ? `
+      <div class="lbl">${d.name} · MISSION HERITAGE</div>
+      ${d.heritage.map(hh => `<div class="chain"><span class="cause">${esc(hh.name)}</span><span class="effect">${esc(hh.note)}</span></div>`).join('')}
+      <p class="note">Objectives here: ${d.objectives.map(oo => OBJECTIVES[oo].name).join(' · ')}. Hazards pool: ${d.pool.map(hh => HAZARDS[hh].name).slice(0, 4).join(' · ')}${d.pool.length > 4 ? '…' : ''}.</p>
+      ${d.flyby ? '<p class="note">FLYBY DESTINATION: no orbit capture - one fast pass, targeting trims instead of brakes (New Horizons profile).</p>' : ''}
+      ${d.flux < 0.3 ? '<p class="note">POWER WARNING: solar flux is too weak here - designs need the RTG (Radioisotope Generator).</p>' : ''}` : '<p class="note">Select a world. Each sets its own budget norm, science goal, hazards and score multiplier - the Moon stays the easy warm-up.</p>';
+    return {
+      cls: 'right', html: `
+      ${header('CHOOSE · STEP 1 OF 3', 'The Destination', 'Ten real places. The farther you go, the bigger the budget, the longer the cruise - and the higher the score. Condition: <b>' + scenario().name + '</b>.')}
+      <div class="opts compact">${opts}</div>
+      ${detail}
+      ${btn(M.dest ? `${d.name} SELECTED · CHOOSE THE SCIENCE QUESTION` : 'SELECT A DESTINATION', 'confirm', { cls: 'go', primary: true, disabled: !M.dest })}` };
+  };
+
   P.OBJECTIVE = () => {
-    const opts = Object.values(OBJECTIVES).map((o, k) => {
+    const opts = Object.values(OBJECTIVES).filter(o => destOf().objectives.includes(o.id)).map((o, k) => {
       const on = M.objective === o.id;
       return option({
         id: o.id, key: k + 1, name: `${o.icon} ${o.name}`, desc: on ? `<i>${o.question}</i>` : '',
@@ -377,14 +426,14 @@ const UI = (() => {
       ${sources([[obj.nasa.key, obj.nasa.ds]])}` : '<p class="note">Select an objective to see its NASA grounding. The objective decides which instrument, site and data system make sense.</p>';
     return {
       cls: 'right', html: `
-      ${header('CHOOSE · STEP 1 OF 2', 'The Science Question', `Condition: <b>${scenario().name}</b>. First decide what to learn - then where to learn it. Each objective rewards a different instrument.`)}
+      ${header('CHOOSE · STEP 2 OF 3', 'The Science Question', `Destination: <b>${destOf().name}</b> · Condition: <b>${scenario().name}</b>. Each objective rewards a different instrument.`)}
       <div class="opts compact">${opts}</div>
       ${detail}
       ${btn(obj ? `OBJECTIVE SET: ${obj.name.toUpperCase()} · CHOOSE SITE` : 'SELECT AN OBJECTIVE', 'confirm', { cls: 'go', primary: true, disabled: !obj })}` };
   };
 
   P.TARGET = () => {
-    const opts = Object.values(SITES).map((reg, k) => {
+    const opts = destOf().sites.map(id => SITES[id]).map((reg, k) => {
       const on = M.region === reg.id;
       const mult = (reg.obj || {})[M.objective] || 1;
       return option({
@@ -396,13 +445,13 @@ const UI = (() => {
     }).join('');
     const reg = SITES[M.region];
     const detail = reg ? `
-      <div class="lbl">${reg.name.toUpperCase()} · NASA DATA</div>
+      <div class="lbl">${reg.name.toUpperCase()} · SITE DATA</div>
       <p class="pitch">${reg.pitch}</p>
-      <div class="data">${siteRows(reg).slice(0, 4).join('')}</div>
-      ${sources((reg.data || []).map((k, i) => [k, (reg.dataDs || [])[i] || 'moon']))}` : '<p class="note">Select a site to see its NASA data. The site decides hazards, temperature drain and communication conditions.</p>';
+      <div class="data">${siteRows(reg).slice(0, 4).join('')}${siteFacts(reg)}</div>
+      ${sources((reg.data || []).map((k, i) => [k, (reg.dataDs || [])[i] || 'moon']))}` : '<p class="note">Select a site. Each brings its own science multipliers, hazards, drain and comm geometry.</p>';
     return {
       cls: 'right target', html: `
-      ${header('CHOOSE · STEP 2 OF 2', 'Choose the Survey Site', `Objective: <b>${OBJECTIVES[M.objective].name}</b>. Each region rewards a different pairing and brings different risks.`)}
+      ${header('CHOOSE · STEP 3 OF 3', 'Choose the Survey Site', `Destination: <b>${destOf().name}</b> · Objective: <b>${OBJECTIVES[M.objective].name}</b>. Each site rewards a different pairing and brings different risks.`)}
       <div class="opts compact">${opts}</div>
       ${detail}
       ${btn(reg ? `TARGET ${reg.short} · ENGINEER SPACECRAFT` : 'SELECT A SITE', 'confirm', { cls: 'go', primary: true, disabled: !reg })}` };
@@ -432,7 +481,7 @@ const UI = (() => {
     const groups = [
       ['1 · LAUNCH VEHICLE', 'vehicle', VEHICLES, o => `$${o.cost}M · ≤${o.capacity} kg · fuel ${o.fuel}%`],
       ['2 · PROPULSION MODULE', 'engine', ENGINES, o => `$${o.cost}M · ${o.mass} kg · burns ×${o.fuelMult}`],
-      ['3 · POWER SYSTEM', 'power', POWER_SYSTEMS, o => `$${o.cost}M · ${o.mass} kg · power ${o.power}%`],
+      ['3 · POWER SYSTEM', 'power', POWER_SYSTEMS, o => `$${o.cost}M · ${o.mass} kg · ${o.rtg ? o.power + '% RTG (distance-proof)' : `${o.power}% × solar ${destOf().fluxLabel}`}`],
       ['4 · THERMAL PROTECTION', 'thermal', THERMALS, o => `$${o.cost}M · ${o.mass} kg · drain ×${o.drainMult}`],
       ['5 · COMMUNICATIONS', 'comms', COMMS, o => `$${o.cost}M · ${o.mass} kg · comm +${o.comm}`],
       ['6 · NAVIGATION', 'nav', NAVS, o => `$${o.cost}M · ${o.mass} kg${o.science ? ` · +${o.science} scan` : ''}`],
@@ -453,15 +502,15 @@ const UI = (() => {
     const tiles = [
       tile('BUDGET USED', `$${d.budgetUsed}M`, `cap $${budgetCap()}M`, d.budgetUsed <= budgetCap()),
       tile('MASS', `${d.mass} kg`, `limit ${d.capacity == null ? dash : d.capacity} kg`, d.capacity == null ? null : d.mass <= d.capacity),
-      tile('POWER', d.power == null ? dash : `${d.power}%`, `min ${RULES.minPower}%`, d.power == null ? null : d.power >= RULES.minPower),
-      tile('FUEL', d.fuel == null ? dash : `${d.fuel}%`, d.arrivalFuel == null ? 'set by vehicle' : `≈${d.arrivalFuel}% at Moon (balanced)`, d.arrivalFuel == null ? null : d.arrivalFuel >= RULES.minArrivalFuel),
+      tile('POWER', d.power == null ? dash : `${d.power}%`, destOf().flux < 0.3 ? `min ${RULES.minPower}% · RTG required` : `min ${RULES.minPower}% · solar ${destOf().fluxLabel}`, d.power == null ? null : d.power >= RULES.minPower),
+      tile('FUEL', d.fuel == null ? dash : `${d.fuel}%`, d.arrivalFuel == null ? 'set by vehicle' : `≈${d.arrivalFuel}% at ${destOf().shortName} (best transfer)`, d.arrivalFuel == null ? null : d.arrivalFuel >= RULES.minArrivalFuel),
       tile('COMM', `${d.comm}`, `${commLabel(d.comm).toLowerCase()}${reg.side === 'far' ? ' · far side!' : ''}`, null),
       tile('STORAGE', `${d.storage == null ? dash : d.storage} GB`, `scan ≈${d.sciencePotential == null ? dash : Math.round(d.sciencePotential * obj.dataRate)} GB`, d.storage == null || d.sciencePotential == null ? null : d.sciencePotential * obj.dataRate <= d.storage),
       tile('SCIENCE / SCAN', d.sciencePotential == null ? dash : `${d.sciencePotential}`, `standard · goal ${scienceGoal()}`, null),
     ].join('');
     return {
       cls: 'wide', html: `
-      ${header(`ENGINEER · ${obj.name.toUpperCase()} AT ${reg.short} <button class="link" data-act="to-objective">change objective</button> <button class="link" data-act="to-target">change site</button>`, 'Origami Spacecraft Engineering', Team.enabled()
+      ${header(`ENGINEER · ${obj.name.toUpperCase()} AT ${destOf().name} ${reg.short} <button class="link" data-act="to-destination">change world</button> <button class="link" data-act="to-objective">change objective</button> <button class="link" data-act="to-target">change site</button>`, 'Origami Spacecraft Engineering', Team.enabled()
         ? 'Each subsystem unfolds on the craft as you choose it. Tags mark the owning role - anyone may click, the owner commits.'
         : 'Each subsystem unfolds on the craft as you choose it. Every advantage has a cost - shown before you commit.')}
       ${sections}
@@ -496,7 +545,7 @@ const UI = (() => {
   function travelSummary(tp, fuelNow) {
     return `<div class="travel-sum">
       <div><span>Selected strategy</span><b>${tp.short}</b></div>
-      <div><span>Estimated lunar arrival</span><b>${MathX.fmtDuration(tp.hours, true)}</b></div>
+      <div><span>Estimated arrival</span><b>${MathX.fmtDuration(tp.hours, true)}</b></div>
       <div><span>Estimated fuel cost</span><b>${tp.fuelTotal}% <small>TLI ${tp.tli} + LOI ${tp.loi}</small></b></div>
       <div><span>Remaining fuel</span><b>${fuelNow - tp.fuelTotal}%</b></div>
     </div>`;
@@ -508,7 +557,7 @@ const UI = (() => {
       const m = TRAVEL_MODES[id], tp = travelPlan(id, d.mass, engine), left = d.fuel - tp.fuelTotal, ok = left >= RULES.minArrivalFuel;
       const hz = Math.round(tp.hazardChance * 100);
       return option({
-        id, key: k + 1, name: m.name, badge: id === 'balanced' ? 'RECOMMENDED' : `FUEL USE ${m.usage}`, desc: `<i>${m.ref}</i>`,
+        id, key: k + 1, name: m.name, badge: id === 'balanced' ? 'RECOMMENDED' : `FUEL USE ${m.usage}`, desc: `<i>${tp.modeRef || m.ref}</i>`,
         chips: [{ t: `⏱ ≈${MathX.fmtDuration(tp.hours)}`, tone: 'neutral' }, chip('fuel', -tp.fuelTotal)]
           .concat(tp.cruisePower ? [chip('power', -tp.cruisePower)] : []).concat(tp.risk ? [chip('risk', tp.risk)] : [])
           .concat([{ t: `${hz < 50 ? '▲' : hz > 80 ? '▼' : '•'} Transit hazard ${hz}%`, tone: hz < 50 ? 'good' : hz > 80 ? 'bad' : 'neutral' },
@@ -520,7 +569,7 @@ const UI = (() => {
     const sel = Game.choice ? travelPlan(Game.choice, d.mass, engine) : null;
     return {
       cls: 'right', html: `
-      ${header('OPERATE · TRAVEL STRATEGY <button class="link" data-act="redesign">modify design</button>', 'How Fast to the Moon?', `Faster = more fuel &amp; risk. Slower = saves fuel, but days longer in transit. Launch fuel ${d.fuel}%.`)}
+      ${header('OPERATE · TRAVEL STRATEGY <button class="link" data-act="redesign">modify design</button>', destOf().travelTitle, destOf().travelSub + ` Launch fuel ${d.fuel}%.`)}
       <div class="opts">${opts}</div>
       ${sel ? travelSummary(sel, d.fuel) : ''}
       ${btn(sel ? `LOCK ${sel.short} · FINAL PRE-LAUNCH CHECKS` : 'SELECT A TRAVEL STRATEGY', 'confirm', { cls: 'go', primary: true, disabled: !sel })}` };
@@ -553,23 +602,32 @@ const UI = (() => {
     return [{ t: `${pc}%: no damage`, tone: 'good' }, { t: `${100 - pc}%:`, tone: 'bad' }].concat(fxChips(o.bad));
   }
   function hazardPanel() {
-    const hz = Game.hazard, h = HAZARDS[hz.id];
+    const hz = Game.hazard;
+    const h = hz ? HAZARDS[hz.id] : null;
+    if (!h) { Game.hazard = null; return P.SURVEY(); }   // stale/unknown reference: fall back cleanly
     const c = counterFor(h);
     const protectedBy = c.selected;
-    const where = hz.slot === 1 ? 'LUNAR TRANSFER' : 'LUNAR SURVEY';
+    const where = hz.slot === 1 ? `${destOf().shortName.toUpperCase()} ${destOf().flyby ? 'APPROACH' : 'TRANSFER'}` : `${destOf().shortName.toUpperCase()} SURVEY`;
     if (Game.phase === 'hazard') {
       const opts = hazardOptions(hz.id, hz.slot).map((o, k) => option({
-        id: o.id, key: k + 1, name: o.name, desc: o.desc, kit: o.isKit,
+        id: o.id, key: k + 1, name: o.name, desc: o.desc + (o.lagged ? ' <i>(light-time lag ×' + (destOf().delayMin >= 30 && M.selectedComms === 'highgain' ? '1.05' : destOf().delayMin >= 30 ? '1.25' : destOf().delayMin >= 15 ? '1.1' : '1') + ')</i>' : ''), kit: o.isKit,
         badge: o.isKit ? 'SUBSYSTEM' : o.chance != null ? 'GAMBLE' : '',
         chips: o.chance != null ? gambleChips(o) : (fxChips(o.fx).length ? fxChips(o.fx) : [{ t: 'No cost', tone: 'good' }]),
         selected: Game.choice === o.id, warn: powerWarn(o.chance != null ? o.bad : o.fx),
       })).join('');
+      const dataLine = h.nasa
+        ? `${h.nasa.label}: ${show(h.nasa.key, h.nasa.ds)}${NasaData.get(h.nasa.key, h.nasa.ds) ? tag(NasaData.get(h.nasa.key, h.nasa.ds).confidence) : ''}`
+        : `${h.nasaNote || ''}${tag('nasa')}`;
+      const meaning = h.nasa ? h.nasa.note + (h.scenarioNote ? ` <i>${h.scenarioNote}</i>` : '') : (h.scenarioNote ? ` <i>${h.scenarioNote}</i>` : 'Simplified game scenario grounded in real mission experience.');
+      const lagNote = destOf().delayMin >= 15
+        ? ` <div class="drow"><span class="dl">Light-time lag</span><span class="dv">${destOf().delayLabel} one way - onboard kits (autonomy) act instantly; ground-in-the-loop responses cost more.</span></div>`
+        : '';
       return {
         cls: 'right alert', html: `
         ${header(`⚠ HAZARD · ${where}`, h.name, h.brief)}
-        ${insight(`${h.nasa.label}: ${show(h.nasa.key, h.nasa.ds)}${NasaData.get(h.nasa.key, h.nasa.ds) ? tag(NasaData.get(h.nasa.key, h.nasa.ds).confidence) : ''}`,
-          h.nasa.note + (h.scenarioNote ? ` <i>${h.scenarioNote}</i>` : ''),
+        ${insight(dataLine, meaning,
           protectedBy ? `Your <b>${c.option.name}</b> unlocks a low-cost response.` : `No matching subsystem on board${c.option ? ` - ${c.option.name} would have helped` : ''}.`)}
+        ${lagNote}
         <div class="opts">${opts}</div>
         ${btn(Game.choice ? 'EXECUTE RESPONSE' : 'SELECT A RESPONSE', 'confirm', { cls: 'go', primary: true, disabled: !Game.choice })}` };
     }
@@ -606,25 +664,28 @@ const UI = (() => {
       const e = M.log.filter(l => l.title === 'Trans-lunar injection burn').pop();
       return {
         cls: 'right', html: `
-        ${header('OPERATE · TRANS-LUNAR INJECTION', 'Engine Burn', `Main engine firing. LUNARIS-01 is accelerating out of Earth orbit onto a ${tp ? tp.name.toLowerCase() : ''} trajectory.`)}
+        ${header(`OPERATE · ${destOf().terms.inj.toUpperCase()}`, 'Engine Burn', `Main engine firing. LUNARIS-01 is accelerating out of Earth orbit onto a ${tp ? tp.name.toLowerCase() : ''} trajectory.`)}
         ${e ? `<div class="logline"><b>${esc(e.title)}</b>${chips(e.chips)}<span>${esc(e.detail)}</span></div>` : ''}
         ${plan}
         <div class="wait">◌ Burning… fuel now ${M.fuel}%</div>` };
     }
     if (Game.phase === 'loi') {
+      const d = destOf();
       return {
         cls: M.failure ? 'right alert' : 'right', html: `
-        ${header('OPERATE · LUNAR ORBIT INSERTION', M.failure ? 'Capture Failed' : 'Entering Lunar Orbit', M.failure ? '' : `Retro-burn to slow below lunar escape speed: fuel −${tp ? tp.loi : '?'}%.`)}
+        ${header(`OPERATE · ${d.terms.capture.toUpperCase()}`, M.failure ? 'Capture Failed' : `Approaching ${d.shortName}`, M.failure ? '' : d.flyby ? `Trim burn to set the flyby aimpoint: fuel −${tp ? tp.loi : '?'}% (no capture on a flyby).` : `Retro-burn to slow below ${d.shortName} escape speed: fuel −${tp ? tp.loi : '?'}%.`)}
         ${M.failure ? `<div class="verdict bad">✗ ${M.failure}</div>${btn('VIEW MISSION RESULT', 'to-result', { cls: 'warn', primary: true })}` : `${plan}<div class="wait">◌ Braking…</div>`}` };
     }
-    const dist = dRow('Mean distance', 'Semi-major axis (mean Earth-Moon distance)', 'orbit');
-    const range = dRow('Range', 'Perigee (closest)', 'orbit', v => `${v} (perigee) to ${show('Apogee (farthest)', 'orbit')} (apogee)`);
-    const vel = dRow('Moon speed', 'Moon orbit|Mean orbital velocity', 'orbit', v => `${v} around Earth`);
-    const delay = dRow('Radio delay', 'One-way light/radio delay at mean distance', 'orbit', v => `${v} one way`);
+    const dist = destOf().id === 'moon'
+      ? dRow('Mean distance', 'Semi-major axis (mean Earth-Moon distance)', 'orbit')
+      : `<div class="drow"><span class="dl">Mean distance from Earth</span><span class="dv">${destOf().distKm >= 1e9 ? (destOf().distKm / 1e9).toFixed(1) + ' billion km' : Math.round(destOf().distKm / 1e6) + ' million km'}${tag('approx')}</span></div>`;
+    const range = destOf().id === 'moon' ? dRow('Range', 'Perigee (closest)', 'orbit', v => `${v} (perigee) to ${show('Apogee (farthest)', 'orbit')} (apogee)`) : '';
+    const vel = destOf().id === 'moon' ? dRow('Moon speed', 'Moon orbit|Mean orbital velocity', 'orbit', v => `${v} around Earth`) : '';
+    const delay = `<div class="drow"><span class="dl">Radio delay one way</span><span class="dv">${destOf().delayLabel}${tag('nasa')}</span></div>`;
     if (Game.phase === 'cruise') {
       return {
         cls: 'right', html: `
-        ${header('OPERATE · TRANS-LUNAR COAST', 'Lunar Transfer', `Engine off - coasting to the Moon on a ${tp ? tp.name.toLowerCase() : 'transfer'} (${tp ? MathX.fmtDuration(tp.hours, true) : ''}). Tracking stations are watching for trouble.`)}
+        ${header(`OPERATE · ${destOf().terms.coast.toUpperCase()}`, 'Transfer', `Engine off - coasting to ${destOf().shortName} on a ${tp ? tp.name.toLowerCase() : 'transfer'} (${tp ? MathX.fmtDuration(tp.hours, true) : ''}). Tracking stations are watching for trouble.`)}
         <div class="data">${dist}${range}${vel}${delay}</div>
         ${factBox()}
         <p class="note">Travel is a stylised animation - not a real orbital-mechanics simulation.</p>
@@ -633,24 +694,28 @@ const UI = (() => {
     if (M.failure) {
       return {
         cls: 'right alert', html: `
-        ${header('OPERATE · LUNAR ORBIT INSERTION', 'Mission Lost at the Moon', '')}
+        ${header(`OPERATE · ${destOf().terms.capture.toUpperCase()}`, `Mission Lost at ${destOf().shortName}`, '')}
         <div class="verdict bad">✗ ${M.failure}</div>
         ${btn('VIEW MISSION RESULT', 'to-result', { cls: 'warn', primary: true })}` };
     }
-    const loi = M.log.find(l => l.title === 'Lunar orbit insertion burn');
+    const loi = M.log.find(l => l.title === destOf().terms.capture + ' burn');
     const used = M.log.filter(l => l.stage === 'Transfer' && /burn/.test(l.title)).reduce((a, l) => a + l.chips.filter(c => /Fuel/.test(c.t)).reduce((b, c) => b + Number(c.t.replace(/[^0-9]/g, '')), 0), 0);
     return {
       cls: 'right', html: `
-      ${header('OPERATE · LUNAR ORBIT', 'Lunar Orbit Established', 'Braking burn complete. LUNARIS-01 has been captured by the Moon.')}
+      ${header(`OPERATE · ${destOf().terms.arrived.toUpperCase()}`, destOf().terms.arrived, destOf().flyby ? 'Targeting trim complete. LUNARIS-01 is on the pass corridor.' : 'Capture burn complete. LUNARIS-01 has been captured.')}
       <div class="kvs">
         <div class="kv"><span>Travel time (${tp ? tp.short : ''})</span><b>${tp ? MathX.fmtDuration(tp.hours, true) : '—'}</b></div>
         <div class="kv"><span>Propellant used for the transfer</span><b>${used}%</b></div>
         <div class="kv"><span>Fuel remaining</span><b>${M.fuel}%</b></div>
       </div>
-      ${insight(`Lunar escape velocity ${show('Escape velocity')}${tag('nasa')} vs Earth's ${show('Earth|Escape velocity', 'orbit')}${tag('nasa')}.`,
-        'The Moon\'s weak gravity makes capture cheap compared with leaving Earth - but LUNARIS-01 must still brake below lunar escape speed.',
-        `Orbit insertion burn → ${loi ? chips(loi.chips) : ''}`)}
-      ${btn('CHOOSE LUNAR ORBIT', 'to-orbit', { cls: 'go', primary: true })}` };
+      ${destOf().flyby
+        ? insight('New Horizons hit a ~100 km aimpoint after 9.5 years (approx).',
+            'Flybys trade capture fuel for speed: one pass, then the data window.',
+            `Targeting trim → ${loi ? chips(loi.chips) : ''}`)
+        : insight(`Lunar escape velocity ${show('Escape velocity')}${tag('nasa')} vs Earth's ${show('Earth|Escape velocity', 'orbit')}${tag('nasa')}.`,
+            'The Moon\'s weak gravity makes capture cheap compared with leaving Earth - but LUNARIS-01 must still brake below lunar escape speed.',
+            `Orbit insertion burn → ${loi ? chips(loi.chips) : ''}`)}
+      ${btn(destOf().flyby ? 'BEGIN FLYBY SEQUENCE' : 'CHOOSE ORBIT', destOf().flyby ? 'to-survey' : 'to-orbit', { cls: 'go', primary: true })}` };
   };
 
   P.ORBIT_DECISION = () => {
@@ -658,14 +723,14 @@ const UI = (() => {
       const done = Game.phase === 'done';
       return {
         cls: 'right', html: `
-        ${header('OPERATE', ORBITS[M.selectedOrbit].name, done ? 'Orbit established.' : 'Executing orbit adjustment burn…')}
+        ${header('OPERATE', (destOf().orbits || {})[M.selectedOrbit] || ORBITS[M.selectedOrbit].name, done ? 'Orbit established.' : 'Executing orbit adjustment burn…')}
         ${done ? `${chips(M.log.filter(l => l.stage === 'Orbit').flatMap(l => l.chips))}${btn('BEGIN LUNAR SURVEY', 'to-survey', { cls: 'go', primary: true })}` : `${factBox()}<div class="wait">◌ Burning…</div>`}` };
     }
-    const reg = site();
+    const reg = site(), dn = destOf().orbits || { low: ORBITS.low.name, high: ORBITS.high.name };
     const opts = ['low', 'high'].map((id, k) => {
       const fx = orbitFx(id), allowed = orbitAllowed(id);
       return option({
-        id, key: k + 1, name: ORBITS[id].name, desc: ORBITS[id].desc + (id === 'low' && reg.dust > 1.5 ? ' Dusty target: low orbit raises the dust threat.' : ''), chips: fxChips(fx),
+        id, key: k + 1, name: dn[id], desc: ORBITS[id].desc + (id === 'low' && reg.dust > 1.5 ? ' Dusty target: low orbit raises the dust threat.' : '') + (id === 'low' && destOf().rad >= 2 ? ' Radiation belts: low orbit raises the dose and risk.' : ''), chips: fxChips(fx),
         selected: Game.choice === id, disabled: !allowed,
         warn: !allowed ? `Not enough fuel (${M.fuel}% left)` : M.fuel + fx.fuel < RULES.fuelReserve ? `Leaves ${M.fuel + fx.fuel}% fuel - reserve objective missed, +${rk(15)} risk` : powerWarn(fx),
       });
@@ -673,12 +738,10 @@ const UI = (() => {
     return {
       cls: 'right', html: `
       ${header('OPERATE', 'Orbit Decision', `Fuel ${M.fuel}%. Last planned fuel decision - keep ≥ ${RULES.fuelReserve}% in reserve.${reg.fuel ? ` Reaching ${reg.short.toLowerCase()} costs ${reg.fuel}% extra.` : ''}`)}
-      ${insight(`Surface pressure ${show('Atmospheric surface pressure')}${tag('nasa')}`,
-        'Effectively a vacuum: no air drag, so even a low orbit is possible.',
-        'Low orbit = closer, more detailed observations but more correction burns, risk and exposure to lofted dust.')}
+      ${destOf().orbitInsight ? insight(`${destOf().shortName}`, destOf().orbitInsight.data, destOf().orbitInsight.effect) : ''}
       <div class="opts">${opts}</div>
-      ${btn(Game.choice ? `CONFIRM ${ORBITS[Game.choice].name.toUpperCase()}` : 'SELECT AN ORBIT', 'confirm', { cls: 'go', primary: true, disabled: !Game.choice })}
-      ${sources([['Atmospheric surface pressure'], ['Escape velocity']])}` };
+      ${btn(Game.choice ? `CONFIRM ${dn[Game.choice].toUpperCase()}` : 'SELECT AN ORBIT', 'confirm', { cls: 'go', primary: true, disabled: !Game.choice })}
+      ${destOf().id === 'moon' ? sources([['Atmospheric surface pressure'], ['Escape velocity']]) : ''}` };
   };
 
   function siteInsight() {
@@ -695,11 +758,11 @@ const UI = (() => {
     if (Game.phase === 'brief') {
       return {
         cls: 'right', html: `
-        ${header('OPERATE · SURVEY', `Target: ${reg.name}`, `${reg.site} · ${reg.kind}. Objective: ${obj.name}.`)}
+        ${header('OPERATE · SURVEY', `Target: ${reg.name}`, `${reg.site} · ${reg.kind}. Objective: ${obj.name} at ${destOf().shortName}.`)}
         <div class="data">
           ${siteRows(reg).join('')}
-          ${dRow('Gravity', 'Surface gravity')}
-          ${dRow('Surface dose (Apollo)', 'Surface dose rate measured during Apollo')}
+          ${siteFacts(reg)}
+          <div class="drow"><span class="dl">Gravity</span><span class="dv">${destOf().grav}${tag('nasa')}</span></div>
         </div>
         <p class="note">Hover a row for its NASA source. Tags show whether a value is measured, approximate, an estimate, qualitative, derived or a lab simulant.</p>
         ${btn('PLAN OBSERVATION', 'plan', { cls: 'go', primary: true })}
@@ -742,12 +805,13 @@ const UI = (() => {
   P.MISSION_EVENT = () => {
     const battery = POWER_SYSTEMS[M.selectedPowerSystem].battery;
     if (Game.phase === 'alert') {
-      return { cls: 'right alert', html: `${header('⚠ MISSION EVENT', 'Power Demand Increase', 'The survey target is entering lunar night…')}<div class="wait bad">◌ Analysing power bus…</div>` };
+      return { cls: 'right alert', html: `${header('⚠ MISSION EVENT', destOf().event.name, destOf().event.alert)}<div class="wait bad">◌ Analysing power bus…</div>` };
     }
-    const hd = halfDay();
+    const ev = destOf().event;
+    const evRows = (ev.facts || []).map(f => `<div class="drow"><span class="dl">${esc(f.k)}</span><span class="dv">${esc(f.v)}${tag(f.tag)}</span></div>`).join('');
     const intro = `
-      ${header('⚠ MISSION EVENT', 'Power Demand Increase', `Heaters on: <b>Power ${MINUS}${Game.eventDrain}%</b>${battery ? ' (battery backup absorbed most of it)' : ' (no battery backup)'}. Now at ${M.power}%.`)}
-      ${insight(`Night lasts ≈${hd || '?'} Earth days${tag('derived')}; surface drops to ${show('Surface temperature minimum (typical range)')}${tag('nasa')}.`,
+      ${header('⚠ MISSION EVENT', destOf().event.name, `Heaters on: <b>Power ${MINUS}${Game.eventDrain}%</b>${battery ? ' (battery backup absorbed most of it)' : hasRtg() ? ' (RTG waste heat lightened it)' : ' (no battery backup)'}. Now at ${M.power}%.`)}
+      ${insight(evRows || `${show('Surface temperature minimum (typical range)')}${tag('nasa')}.`,
         'No sunlight for the panels, and electronics must be heated to survive.',
         `Choose what to sacrifice: power, science, or safety.`)}`;
     if (Game.phase === 'choose') {
@@ -786,7 +850,7 @@ const UI = (() => {
         <div class="data">
           <div class="drow"><span class="dl">Comm capability</span><span class="dv">${c} · ${commLabel(c)}${tag('game')}</span></div>
           ${far}
-          ${dRow('Signal delay', 'One-way light/radio delay at mean distance', 'orbit', v => `${v} one way`)}
+          <div class="drow"><span class="dl">Signal delay one way</span><span class="dv">${destOf().delayLabel}${tag('nasa')}${destOf().delayMin >= 15 ? ' - autonomy matters' : ''}</span></div>
           <div class="drow"><span class="dl">Risk</span><span class="dv">${M.risk} · ${riskLevel(M.risk)}${M.risk >= RULES.riskHigh ? ' - anomaly expected' : ''}${tag('game')}</span></div>
         </div>
         <p class="note">Comm capability and site location set the power cost. Goal ${scienceGoal()} science with power ≥ ${RULES.healthyPower}% at the end.</p>
@@ -830,7 +894,7 @@ const UI = (() => {
     return {
       cls: 'right', html: `
     ${header('EXPLAIN · MISSION RESULT', `<span class="status ${statusCls(M.missionStatus)}">${STATUS_ICON[M.missionStatus]} ${M.missionStatus}</span>`)}
-    <div class="bigsci ${statusCls(M.missionStatus)}"><b>${M.science}</b><span>science returned from ${site().short.toLowerCase()}<br>goal ${scienceGoal()}${M.transmittedFraction < 1 ? ` · only ${Math.round(M.transmittedFraction * 100)}% of the downlink completed` : ''}</span></div>
+    <div class="bigsci ${statusCls(M.missionStatus)}"><b>${M.science}</b><span>science returned from ${destOf().shortName.toLowerCase()} · ${site().short.toLowerCase()}<br>goal ${scienceGoal()}${M.transmittedFraction < 1 ? ` · only ${Math.round(M.transmittedFraction * 100)}% of the downlink completed` : ''}</span></div>
     ${scoreBlock(sc)}
     ${registered ? '<div class="verdict ok">SCORE REGISTERED · HALL OF FAME</div>' : `
     <div class="codeline"><input id="score-name" type="text" maxlength="18" placeholder="${Team.enabled() ? 'crew name for the Hall of Fame' : 'your name for the Hall of Fame'}" spellcheck="false"><button class="btn" data-act="register-score">REGISTER</button></div>`}
@@ -845,12 +909,12 @@ const UI = (() => {
     return M.log.filter(l => ['Objective', 'Target', 'Design', 'Travel', 'Orbit', 'Survey', 'Event', 'Transmission'].includes(l.stage)).map(l => {
       const downs = [];
       if (l.stage === 'Design') {
-        if (/Power System/.test(l.title)) downs.push(M.selectedPowerSystem === 'battery' ? 'absorbed the lunar-night heater load' : 'set the power margin for every later choice');
+        if (/Power System/.test(l.title)) downs.push(M.selectedPowerSystem === 'battery' ? 'absorbed the night/eclipse heater load' : 'set the power margin for every later choice');
         if (/Recorder/.test(l.title)) downs.push(M.flags.storageOverflow ? 'the storage limit actually cost science during the survey' : 'held every scan you generated');
         if (/Antenna|Comms/i.test(l.title) || COMMS[Game.sel.comms] && COMMS[Game.sel.comms].name === l.title) downs.push(`comm capability ${M.communication} → downlink power cost`);
         if (/Engine/.test(l.title)) downs.push(`burn fuel ×${ENGINES[M.selectedEngine].fuelMult}`);
       }
-      if (l.stage === 'Travel') downs.push(`transit hazard ${Math.round(M.travel.hazardChance * 100)}% · night load ×${M.travel.nightFactor.toFixed(2)}`);
+      if (l.stage === 'Travel') downs.push(`transit hazard ${Math.round(M.travel.hazardChance * 100)}% · night load ×${M.travel.nightFactor.toFixed(2)} · ${destOf().shortName}`);
       if (l.stage === 'Orbit') downs.push(l.title.includes('Low') ? 'sharper observations but more risk' : 'stable but less detail');
       if (l.stage === 'Survey') downs.push(`recorder now ${M.dataStored}/${M.storageGB} GB`);
       if (l.stage === 'Event') downs.push(M.selectedEventResponse === 'reduce' ? 'kept power safe at a science cost' : M.selectedEventResponse === 'reserve' ? 'spent reserve power' : 'kept observing at a risk cost');
@@ -875,11 +939,11 @@ const UI = (() => {
   function historyTable() {
     const hist = HISTORY.load();
     if (hist.length < 2) return '';
-    const rows = hist.map(h => `<tr><td>${esc(h.date)}</td><td class="${statusCls(h.status)}">${STATUS_ICON[h.status] || '—'} ${esc(h.status || '')}</td><td><b>${h.score != null ? h.score : '—'}</b>${h.grade ? ` ${esc(h.grade)}` : ''}</td><td><b>${h.science}</b>/${h.goal}</td><td>${esc(h.objective || '')}</td><td>${esc(h.region || '')}</td><td>${esc(h.instrument || '')}</td><td>${esc(h.condition || '')}</td><td>${esc(h.travel || '')}</td><td>${esc(h.diff || 'ENGINEER')}</td><td>$${h.budget}M</td></tr>`).join('');
+    const rows = hist.map(h => `<tr><td>${esc(h.date)}</td><td class="${statusCls(h.status)}">${STATUS_ICON[h.status] || '—'} ${esc(h.status || '')}</td><td><b>${h.score != null ? h.score : '—'}</b>${h.grade ? ` ${esc(h.grade)}` : ''}</td><td><b>${h.science}</b>/${h.goal}</td><td>${esc(h.dest || 'Moon')}</td><td>${esc(h.objective || '')}</td><td>${esc(h.region || '')}</td><td>${esc(h.instrument || '')}</td><td>${esc(h.condition || '')}</td><td>${esc(h.travel || '')}</td><td>${esc(h.diff || 'ENGINEER')}</td><td>$${h.budget}M</td></tr>`).join('');
     return `
       <div class="lbl">LEARN · YOUR LAST ${hist.length} MISSIONS · COMPARE DESIGNS</div>
       <table class="hist">
-        <tr><th>DATE</th><th>RESULT</th><th>SCORE</th><th>SCIENCE</th><th>OBJECTIVE</th><th>SITE</th><th>INSTRUMENT</th><th>CONDITION</th><th>TRAVEL</th><th>DIFF</th><th>COST</th></tr>
+        <tr><th>DATE</th><th>RESULT</th><th>SCORE</th><th>SCIENCE</th><th>WORLD</th><th>OBJECTIVE</th><th>SITE</th><th>INSTRUMENT</th><th>CONDITION</th><th>TRAVEL</th><th>DIFF</th><th>COST</th></tr>
         ${rows}
       </table>
       <p class="note">Every run changes the condition and the hazards. Which design matched which condition? What would you keep, what would you swap?</p>`;
@@ -918,8 +982,8 @@ const UI = (() => {
     const board = BOARD.top(limit);
     if (!board.length) return `<p class="note">Hall of Fame is empty - register your score on the result screen, then compare designs with a friend via a challenge link.</p>`;
     return `
-    <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>SCIENCE</th><th>DIFF</th><th>MODE</th><th>CONDITION</th><th>SITE</th><th>DATE</th></tr>
-    ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${b.sci}/${b.goal || '?'}</td><td>${esc(b.diff || '')}</td><td>${esc(b.mode || '')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.reg || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>`;
+    <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>SCIENCE</th><th>DIFF</th><th>MODE</th><th>WORLD</th><th>CONDITION</th><th>SITE</th><th>DATE</th></tr>
+    ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${b.sci}/${b.goal || '?'}</td><td>${esc(b.diff || '')}</td><td>${esc(b.mode || '')}</td><td>${esc(b.dest || 'Moon')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.reg || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>`;
   }
 
   P.REPORT = () => {
@@ -929,7 +993,7 @@ const UI = (() => {
       ? `${commLabel(M.communication)} link · ${M.selectedTransmission === 'full' ? 'full resolution' : 'compressed'} · ${Math.round(M.transmittedFraction * 100)}% delivered`
       : 'No transmission';
     const tiles = [
-      tile('MISSION STATUS', `<span class="status ${statusCls(st)}">${STATUS_ICON[st]} ${st}</span>`, `${site().name}`, null),
+      tile('MISSION STATUS', `<span class="status ${statusCls(st)}">${STATUS_ICON[st]} ${st}</span>`, `${destOf().name} · ${site().name}`, null),
       tile('SCIENCE RETURNED', `${M.science}`, `goal ${scienceGoal()} · collected ${M.collectedScience || M.science}`, M.science >= scienceGoal()),
       tile('POWER REMAINING', `${M.power}%`, `health line ${RULES.healthyPower}%`, !M.failure && M.power >= RULES.healthyPower),
       tile('FUEL REMAINING', `${M.fuel}%`, `reserve target ${RULES.fuelReserve}%`, M.fuel >= RULES.fuelReserve),
@@ -955,11 +1019,13 @@ const UI = (() => {
       ${dataChart()}
       <div class="lbl">YOUR KEY DECISIONS → CONSEQUENCES</div>
       <div class="decs">${decisionChains()}</div>
+      <div class="lbl">MISSION HERITAGE · ${destOf().name}</div>
+      ${destOf().heritage.map(hh => `<div class="chain"><span class="cause">${esc(hh.name)}</span><span class="effect">${esc(hh.note)}</span></div>`).join('')}
       ${historyTable()}
       <div class="lbl">HALL OF FAME · LOCAL RANKINGS <button class="link" data-act="board-clear">clear</button></div>
       ${boardTable()}
       <div class="actions">${btn('COPY CHALLENGE LINK · SEND THIS DESIGN', 'copy-share', { cls: 'ghost' })}</div>
-      <p class="note">Every new mission draws a new random condition and new hazards. Tip: ${strat.next} &nbsp;·&nbsp; Budget, power, fuel, science and risk are a <b>simplified game model</b>. Lunar values come from the ${Object.keys(NasaData.DATASETS).length} NASA-sourced datasets (sources shown in-game).</p>` };
+      <p class="note">Every new mission draws a new random condition and new hazards. Tip: ${strat.next} &nbsp;·&nbsp; Budget, power, fuel, science and risk are a <b>simplified game model</b>. Physical framing values (solar flux, gravity, light time, transit times) are real and rounded; datasets come from ${Object.keys(NasaData.DATASETS).length} NASA-sourced CSVs (sources shown in-game).</p>` };
   };
 
   // ------------------------------------------------------------ render / HUD
@@ -1050,12 +1116,14 @@ const UI = (() => {
 
   const TRACK = ['CHOOSE', 'ENGINEER', 'LAUNCH', 'TRANSFER', 'OPERATE', 'RETURN', 'EXPLAIN'];
   const STAGE_INFO = {
-    BRIEFING: [-1, 'MISSION BRIEFING'], OBJECTIVE: [0, 'CHOOSE · SCIENCE OBJECTIVE'],
+    BRIEFING: [-1, 'MISSION BRIEFING'], DESTINATION: [0, 'CHOOSE · DESTINATION WORLD'],
+    OBJECTIVE: [0, 'CHOOSE · SCIENCE OBJECTIVE'],
     TARGET: [0, 'CHOOSE · SURVEY SITE'],
     DESIGN: [1, 'ENGINEER · ORIGAMI SPACECRAFT'], DESIGN_REVIEW: [1, 'ENGINEER · DESIGN VALIDATION'],
     TRAJECTORY: [2, 'OPERATE · TRAVEL STRATEGY'], LAUNCH: [2, 'OPERATE · LAUNCH'],
-    TRANSFER: () => [3, 'OPERATE · LUNAR TRANSFER'], ORBIT_DECISION: [4, 'OPERATE · ORBIT + SURVEY'],
-    SURVEY: [4, 'OPERATE · LUNAR SURVEY'], MISSION_EVENT: [4, 'OPERATE · MISSION EVENT'],
+    TRANSFER: () => [3, destOf().flyby ? 'OPERATE · APPROACH + FLYBY' : 'OPERATE · TRANSFER'],
+    ORBIT_DECISION: [4, 'OPERATE · ORBIT + SURVEY'],
+    SURVEY: [4, 'OPERATE · SURVEY'], MISSION_EVENT: [4, 'OPERATE · MISSION EVENT'],
     TRANSMISSION: [5, 'RETURN · DATA TRANSMISSION'], RESULT: [6, 'EXPLAIN · MISSION RESULT'], REPORT: [6, 'EXPLAIN · DEBRIEF + LEARN'],
   };
   function tracker() {
@@ -1066,10 +1134,11 @@ const UI = (() => {
     $('tracker').classList.toggle('hidden', !vis);
     if (!vis) return;
     const [idx, label] = info;
+    const dst = M.dest ? `<div class="cond-badge tgt">${destOf().icon} ${destOf().shortName.toUpperCase()}</div>` : '';
     const tgt = M.region ? `<div class="cond-badge tgt">◎ ${SITES[M.region].short}</div>` : '';
     const obj = M.objective ? `<div class="cond-badge tgt">⚗ ${OBJECTIVES[M.objective].name.toUpperCase()}</div>` : '';
     const owner = Team.enabled() ? `<div class="cond-badge owner" title="The role currently owning this screen's decisions">${Team.label()}</div>` : '';
-    $('tracker').innerHTML = `<ol>${TRACK.map((s, k) => `<li class="${k < idx ? 'done' : k === idx ? 'now' : ''}"><i></i>${s}</li>`).join('')}</ol>${obj}${tgt}<div class="cond-badge" title="${scenario().effects.join(' · ')}">${scenario().icon} ${scenario().name.toUpperCase()}</div>${owner}<button class="link glos" data-act="glossary" title="Mission glossary (press ?)">? GLOSSARY</button><div class="stage-label">${label}</div>`;
+    $('tracker').innerHTML = `<ol>${TRACK.map((s, k) => `<li class="${k < idx ? 'done' : k === idx ? 'now' : ''}"><i></i>${s}</li>`).join('')}</ol>${dst}${obj}${tgt}<div class="cond-badge" title="${scenario().effects.join(' · ')}">${scenario().icon} ${scenario().name.toUpperCase()}</div>${owner}<button class="link glos" data-act="glossary" title="Mission glossary (press ?)">? GLOSSARY</button><div class="stage-label">${label}</div>`;
   }
 
   const prev = {};

@@ -15,8 +15,8 @@ const DIFFS = {
     blurb: 'The designed experience: honest trade-offs, honest odds, full score.',
   },
   veteran: {
-    id: 'veteran', name: 'VETERAN', mult: 1.35, budget: -15, goal: 10, riskMult: 1.25, luck: 0.12,
-    blurb: 'Budget cut, higher science bar, harsher risk and gambles that more often go wrong.',
+    id: 'veteran', name: 'VETERAN', mult: 1.35, budget: -5, goal: 5, riskMult: 1.25, luck: 0.12,
+    blurb: 'Tighter budget, higher science bar, harsher risk and gambles that more often go wrong.',
   },
 };
 const diff = () => DIFFS[MODE_CFG.diff] || DIFFS.engineer;
@@ -39,7 +39,7 @@ const ROLE_META = {
 
 // Which role owns which decision. Anyone may discuss; the owner commits.
 const OWNERS = {
-  OBJECTIVE: 'science', TARGET: 'science', DESIGN_REVIEW: 'director', TRAJECTORY: 'ops',
+  DESTINATION: 'director', OBJECTIVE: 'science', TARGET: 'science', DESIGN_REVIEW: 'director', TRAJECTORY: 'ops',
   LAUNCH: 'director', TRANSFER: 'ops', ORBIT_DECISION: 'director', SURVEY: 'science',
   MISSION_EVENT: 'ops', TRANSMISSION: 'ops', hazard: 'ops',
 };
@@ -94,11 +94,12 @@ function computeScore() {
   const d = diff();
   const teamBonus = Team.enabled() && Team.size() >= 3 ? 4 : 0;
   const modeMult = MODE_CFG.mode === 'sandbox' ? 0.9 : 1;
-  const total = Math.max(0, Math.round((base + teamBonus) * d.mult * modeMult));
+  const dest = destOf();
+  const total = Math.max(0, Math.round((base + teamBonus) * d.mult * dest.scoreMult * modeMult));
   const grade = M.missionStatus === 'FAILURE' ? (total >= 45 ? 'C' : 'D')
     : total >= 92 ? 'S' : total >= 78 ? 'A' : total >= 62 ? 'B' : total >= 45 ? 'C' : 'D';
   const rows = [
-    { k: 'SCIENCE RETURNED', v: `${M.science} / ${goal}`, p: sciPts, max: 56 },
+    { k: 'SCIENCE RETURNED', v: `${M.science} / ${goal} at ${dest.shortName}`, p: sciPts, max: 56 },
     { k: 'MISSION STATUS', v: M.missionStatus || '—', p: statusPts, max: 25 },
     { k: 'BUDGET EFFICIENCY', v: `$${M.budgetUsed}M of $${cap}M`, p: budgetPts, max: 12 },
     { k: 'PROPELLANT MARGIN', v: `${M.fuel}% left`, p: fuelPts, max: 8 },
@@ -107,8 +108,9 @@ function computeScore() {
     { k: 'HAZARD HANDLING', v: `${hzGood} clean · ${hzBad} costly`, p: hazardPts, max: 8 },
   ];
   if (teamBonus) rows.push({ k: 'TEAM SYNERGY', v: `${Team.size()} roles flew together`, p: teamBonus, max: 4 });
-  M.score = { rows, base: Math.round(base * 10) / 10, mult: d.mult, total, grade,
-    mode: MODE_CFG.mode, diff: d.name, team: Team.enabled() ? Team.size() : 0 };
+  M.score = { rows, base: Math.round(base * 10) / 10, mult: d.mult * dest.scoreMult, total, grade,
+    mode: MODE_CFG.mode, diff: d.name, team: Team.enabled() ? Team.size() : 0,
+    dest: dest.shortName, destMult: dest.scoreMult };
   return M.score;
 }
 
@@ -150,7 +152,7 @@ const SHARE = {
   // Snapshot of everything that defines a mission design + its framing
   fromState() {
     return {
-      v: 2, d: MODE_CFG.diff, m: MODE_CFG.mode, c: M.scenario,
+      v: 2, d: MODE_CFG.diff, m: MODE_CFG.mode, c: M.scenario, dst: M.dest || 'moon',
       o: M.objective, r: M.region, t: M.travelMode || null, g: Game.sel,
       tm: MODE_CFG.team ? MODE_CFG.team.map(p => p.role) : null,
     };
@@ -180,6 +182,8 @@ const SHARE = {
     Team.list = MODE_CFG.team ? MODE_CFG.team.map((p, i) => ({ n: p.n, role: p.role, i })) : [];
     Team.active = 0;
     resetMission(o.c || undefined);
+    M.dest = DESTS[o.dst] ? o.dst : 'moon';   // legacy v2 codes (no dst) land on the Moon
+    if (o.r && destOf().sites && !destOf().sites.includes(o.r)) return `Site does not belong to ${destOf().shortName}.`;
     if (o.o) M.objective = o.o;
     if (o.r) M.region = o.r;
     if (o.t) Game.travelMode = o.t;   // travel plan is recomputed with the real mass at launch
@@ -192,7 +196,7 @@ const SHARE = {
 // ---------------------------------------------------------------- autosave / resume
 const SAVE = {
   KEY: 'lunaris-save',
-  SAFE: ['OBJECTIVE', 'TARGET', 'DESIGN', 'TRAJECTORY', 'ORBIT_DECISION', 'SURVEY', 'MISSION_EVENT', 'TRANSMISSION', 'BRIEFING'],
+  SAFE: ['DESTINATION', 'OBJECTIVE', 'TARGET', 'DESIGN', 'TRAJECTORY', 'ORBIT_DECISION', 'SURVEY', 'MISSION_EVENT', 'TRANSMISSION', 'BRIEFING'],
   store(state) {
     if (!this.SAFE.includes(state)) return;
     try {
@@ -221,6 +225,7 @@ const SAVE = {
 
 // ---------------------------------------------------------------- phase tips (first-run coaching)
 const TIPS = {
+  DESTINATION: 'Every world scales the budget and the science goal - and pays a score multiplier. Solar flux, light-time delay and radiation decide which subsystems survive the trip.',
   BRIEFING: 'The condition card changes every run - read it first. It decides whether power, budget or risk is your tightest constraint.',
   OBJECTIVE: 'The objective is the question you answer. It sets which instrument earns the most science - and how much data each point produces.',
   TARGET: 'Hover the site rows: each has real NASA data. Polar sites reward ice science but punish cameras; the far side pays best but cannot call Earth directly.',
@@ -261,16 +266,28 @@ const GLOSSARY = [
   ['Regolith', 'The loose dusty surface layer. Abrasive, electrostatically charged, and - in the game - a real threat to optics and panels.'],
   ['ISRU', 'In-Situ Resource Utilization: making propellant, oxygen or water from local material (regolith oxides, polar ice) instead of lifting it from Earth.'],
   ['Confidence tags', 'NASA DATA / APPROX / ESTIMATE / DERIVED / LAB SIMULANT - every value in LUNARIS says how solid it is. Real mission data works the same way.'],
+  ['Gravity assist', 'Flying close past a planet to borrow a slice of its orbital momentum - free delta-v, paid for in years. MESSENGER needed 6 assists; Cassini 4; BepiColombo 9.'],
+  ['RTG', 'Radioisotope Thermoelectric Generator: heat from decaying plutonium-238 converted to electricity. Beyond roughly Jupiter, sunlight is too weak for solar arrays - Voyager, Cassini, New Horizons, Perseverance and Europa Clipper all ride on RTGs.'],
+  ['Light-time delay', 'Radio signals travel at light speed: 1.3 s to the Moon, ~12 min to Mars, ~43 min to Jupiter, ~4.2 h to Pluto. The farther the target, the more the spacecraft must act on its own.'],
+  ['Aerobraking', 'Dipping into a planet\'s upper atmosphere to shed speed without burning fuel. Magellan and MRO shaved months off their missions with it - the economy transfer mode uses it.'],
+  ['Flyby vs orbiter', 'Stopping costs almost as much delta-v as getting there. New Horizons chose a 21-hour Pluto pass over capture - more speed, less fuel, one chance.'],
+  ['Solar flux', 'Sunlight falls off with the square of distance: 0.43\u00d7 at Mars, 0.037\u00d7 at Jupiter, 0.0006\u00d7 at Pluto. Power design must follow the destination.'],
+  ['Biosignature', 'A measurement that suggests life - organics, cell-like structures, chemical disequilibrium. The best candidates live where liquid water meets energy: ocean moons and ancient deltas.'],
 ];
 
 // ---------------------------------------------------------------- cadet advice
 const HINTS = {
-  vehicle: () => 'medium',
-  engine: () => 'std',
-  power: () => (hasBatteryNeed() ? 'battery' : 'highcap'),
-  thermal: () => ((SCENARIOS[M.scenario] || {}).id === 'night' ? 'radiator' : 'basic'),
-  comms: () => (site().side === 'far' ? 'highgain' : 'dish'),
-  nav: () => 'startrack',
+  vehicle: () => (destOf().fuelMult >= 1.6 ? 'heavy' : 'medium'),
+  engine: () => (destOf().fuelMult >= 1.5 ? 'efficient' : 'std'),
+  power: () => (destOf().flux < 0.3 ? 'rtg' : hasBatteryNeed() ? 'battery' : 'highcap'),
+  thermal: () => {
+    const need = destOf().thermalMin || 0;
+    if (need >= 2) return 'armor';
+    if (need >= 1) return 'radiator';
+    return ((SCENARIOS[M.scenario] || {}).id === 'night' ? 'radiator' : 'basic');
+  },
+  comms: () => (site().side === 'far' || destOf().delayMin >= 30 ? 'highgain' : 'dish'),
+  nav: () => ((destOf().rad || 0) >= 2 ? 'radhard' : 'startrack'),
   data: () => 'large',
   payload: () => {
     const best = objective().instruments;

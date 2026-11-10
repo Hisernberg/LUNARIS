@@ -36,6 +36,27 @@ const Scenes = (() => {
     }
   };
 
+  SCENES.DESTINATION = (ctx, t, dt) => {
+    background(ctx, t, 1.5);
+    Draw.Cam.update();
+    Draw.solarSystem(ctx, t, null, null, false);
+    const d = destOf();
+    if (M.dest) {
+      const days = Astro.epochDays() + Game.simDays;
+      const pos = destPos(d, days);
+      if (pos) {
+        const P = Draw.Cam.toScreen(pos.x, pos.y);
+        const pulse = 16 + Math.sin(t * 2.4) * 3;
+        ctx.save();
+        ctx.strokeStyle = COL.amber; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.arc(P.x, P.y, pulse, 0, TAU); ctx.stroke();
+        ctx.restore();
+        text(ctx, `${d.name} · DESTINATION`, P.x, P.y - pulse - 12, { align: 'center', size: 10, color: COL.amber, spacing: 2, weight: 700, glow: 1 });
+      }
+    }
+    text(ctx, 'THE SOLAR SYSTEM · CHOOSE YOUR WORLD IN THE MISSION PANEL · BUDGETS, CRUISE TIMES AND SCORES SCALE WITH DISTANCE', W / 2, 48, { align: 'center', size: 9.5, color: COL.faint, spacing: 2 });
+  };
+
   SCENES.MOONVIEW = (ctx, t) => {
     Draw.moonDive(ctx, t);
     for (const reg of Object.values(SITES)) {
@@ -114,11 +135,20 @@ const Scenes = (() => {
   const TG = { x: 330, y: 400, r: 245, fx: 700, fy: 590, fr: 70 };
   SCENES.TARGET = (ctx, t) => {
     background(ctx, t, 1); grid(ctx, 0.022);
-    Draw.moon(ctx, TG.x, TG.y, TG.r);
-    Draw.moon(ctx, TG.fx, TG.fy, TG.fr, { view: 'far' });
-    tag(ctx, 'NEARSIDE · ALWAYS FACES EARTH', TG.x, TG.y - TG.r - 14, COL.label, 'center');
-    tag(ctx, 'FARSIDE', TG.fx, TG.fy - TG.fr - 12, COL.label, 'center');
-    text(ctx, 'never visible from Earth', TG.fx, TG.fy + TG.fr + 12, { align: 'center', size: 9, color: COL.faint });
+    const isMoon = destOf().id === 'moon';
+    if (isMoon) {
+      Draw.moon(ctx, TG.x, TG.y, TG.r);
+      Draw.moon(ctx, TG.fx, TG.fy, TG.fr, { view: 'far' });
+      tag(ctx, 'NEARSIDE · ALWAYS FACES EARTH', TG.x, TG.y - TG.r - 14, COL.label, 'center');
+      tag(ctx, 'FARSIDE', TG.fx, TG.fy - TG.fr - 12, COL.label, 'center');
+      text(ctx, 'never visible from Earth', TG.fx, TG.fy + TG.fr + 12, { align: 'center', size: 9, color: COL.faint });
+    } else {
+      Draw.planetDisc(ctx, TG.x, TG.y, TG.r, DEST_DISC[destOf().id] || 'Mercury', t, false);
+      Draw.planetDisc(ctx, TG.fx, TG.fy, TG.fr, DEST_DISC[destOf().id] || 'Mercury', t * 1.4, false);
+      tag(ctx, `${destOf().shortName.toUpperCase()} · TARGET GLOBE (STYLISED)`, TG.x, TG.y - TG.r - 14, COL.label, 'center');
+      tag(ctx, 'REGION MAP', TG.fx, TG.fy - TG.fr - 12, COL.label, 'center');
+      text(ctx, 'site coordinates are real where missions have visited', TG.fx, TG.fy + TG.fr + 12, { align: 'center', size: 9, color: COL.faint });
+    }
     const taken = new Set(Object.values(SITES).map(r => r.dataKey).filter(Boolean));
     for (const row of NasaData.rows('sites')) {
       if (row.latitude_deg === '' || taken.has(row.site)) continue;
@@ -424,7 +454,9 @@ const Scenes = (() => {
   }
 
   const TRANSFER = { park: 5.2, tli: 2.6, loi: 3.2, tliArc: 0.07 };
-  const cruiseTime = () => (M.travel ? M.travel.cruiseHours : 73) / 13.5;
+  // Cruise seconds: Moon-scale keeps the original 73 h / 13.5 pacing; deep-space
+  // cruises (months to years) are capped so the animation stays watchable.
+  const cruiseTime = () => Math.max(5, Math.min(16, (M.travel ? M.travel.cruiseHours : 73) / 13.5));
   const SC = { x: 400, y: 395 };
 
   function journeyCam() {
@@ -454,7 +486,9 @@ const Scenes = (() => {
     Draw.earth(ctx, TJ.e.x, TJ.e.y, TJ.e.r, lh);
     ctx.save(); ctx.strokeStyle = COL.cyan; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(TJ.e.x, TJ.e.y, TJ.rp, 0, TAU); ctx.stroke(); ctx.restore();
-    Draw.moon(ctx, TJ.m.x, TJ.m.y, TJ.m.r, { lon: Draw.moonLon(lh) });
+    const DJ = destOf();
+    if (DJ.id === 'moon') Draw.moon(ctx, TJ.m.x, TJ.m.y, TJ.m.r, { lon: Draw.moonLon(lh) });
+    else Draw.planetDisc(ctx, TJ.m.x, TJ.m.y, TJ.m.r, DEST_DISC[DJ.id] || 'Mercury', t, true);
     ctx.save(); ctx.strokeStyle = COL.green; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.arc(TJ.m.x, TJ.m.y, TJ.rl, 0, TAU); ctx.stroke(); ctx.restore();
     const active = Game.preview || Game.choice;
     const d = computeDesign(Game.sel);
@@ -480,12 +514,16 @@ const Scenes = (() => {
     const dps = { x: dp.x, y: dp.y + off.y };
     text(ctx, 'TLI BURN POINT', dps.x - 8, dps.y - 10, { size: 9.5, color: COL.amber, spacing: 1.5, align: 'right', glow: 1 });
     tag(ctx, 'EARTH · PARKING ORBIT', TJ.e.x + off.x, TJ.e.y + off.y + 100, COL.label, 'center');
-    tag(ctx, 'MOON · LUNAR ORBIT', TJ.m.x + off.x, TJ.m.y + off.y + 84, COL.label, 'center');
-    tag(ctx, 'TRAVEL STRATEGY · HOW QUICKLY DO YOU WANT TO REACH THE MOON?', 40, 106, COL.cyan);
-    if (NasaData.get('Perigee (closest)', 'orbit')) {
+    tag(ctx, `${DJ.shortName.toUpperCase()} · ${DJ.flyby ? 'FLYBY CORRIDOR' : 'ARRIVAL'}`, TJ.m.x + off.x, TJ.m.y + off.y + 84, COL.label, 'center');
+    tag(ctx, `TRAVEL STRATEGY · HOW QUICKLY DO YOU WANT TO REACH ${DJ.shortName.toUpperCase()}?`, 40, 106, COL.cyan);
+    if (DJ.id === 'moon' && NasaData.get('Perigee (closest)', 'orbit')) {
       tag(ctx, 'EARTH-MOON DISTANCE · THIS LAUNCH WINDOW', 40, 136);
       text(ctx, `${Math.round(M.moonDistance).toLocaleString('en-US')} km`, 40, 156, { size: 16, color: COL.white });
       text(ctx, `NASA range ${NasaData.show('Perigee (closest)', 'orbit')} (perigee) - ${NasaData.show('Apogee (farthest)', 'orbit')} (apogee)`, 40, 175, { size: 9.5, color: COL.faint });
+    } else {
+      tag(ctx, 'CRUISE DISTANCE', 40, 136);
+      text(ctx, `${DJ.distKm >= 1e9 ? (DJ.distKm / 1e9).toFixed(1) + ' billion km' : Math.round(DJ.distKm / 1e6) + ' million km'}`, 40, 156, { size: 16, color: COL.white });
+      text(ctx, `One-way light time ${DJ.delayLabel} · balanced transit ≈${DJ.transit.balanced < 10 ? DJ.transit.balanced + ' days' : Math.round(DJ.transit.balanced / 30.44) + ' months'}`, 40, 175, { size: 9.5, color: COL.faint });
     }
     text(ctx, 'Trajectories stylised, not to scale (simplified game model)', 40, 700, { size: 9.5, color: COL.faint });
   };
@@ -505,7 +543,9 @@ const Scenes = (() => {
     ctx.save(); ctx.strokeStyle = COL.cyan; ctx.lineWidth = 1.2 * lw;
     ctx.globalAlpha = ph === 'parking' ? 0.7 : 0.25; ctx.setLineDash(ph === 'parking' ? [] : [3 * lw, 5 * lw]);
     ctx.beginPath(); ctx.arc(TJ.e.x, TJ.e.y, TJ.rp, 0, TAU); ctx.stroke(); ctx.restore();
-    Draw.moon(ctx, TJ.m.x, TJ.m.y, TJ.m.r, { lon: Draw.moonLon(met) });
+    const DJ = destOf();
+    if (DJ.id === 'moon') Draw.moon(ctx, TJ.m.x, TJ.m.y, TJ.m.r, { lon: Draw.moonLon(met) });
+    else Draw.planetDisc(ctx, TJ.m.x, TJ.m.y, TJ.m.r, DEST_DISC[DJ.id] || 'Mercury', met, ph === 'loi' || ph === 'arrived');
     if (ph === 'loi' || ph === 'arrived') {
       ctx.save(); ctx.strokeStyle = COL.green; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.2 * lw;
       ctx.beginPath(); ctx.arc(TJ.m.x, TJ.m.y, TJ.rl, 0, TAU); ctx.stroke(); ctx.restore();
@@ -555,9 +595,9 @@ const Scenes = (() => {
     if (es.x > -100 && es.y < 760) tag(ctx, 'EARTH', es.x, es.y + TJ.e.r * cam.z + 18, COL.label, 'center');
     if (ms.x < 900) tag(ctx, 'MOON', ms.x, ms.y + TJ.m.r * cam.z + 16, COL.label, 'center');
     const titles = {
-      parking: Game.phaseT < TRANSFER.park / 2 ? ['EARTH ORBIT', 'ORBIT 1 OF 2 · SYSTEMS CHECKOUT'] : ['PREPARING FOR TRANS-LUNAR INJECTION', 'ORBIT 2 OF 2 · ENGINE ARMED'],
-      tli: ['TRANS-LUNAR INJECTION BURN', 'ENGINE FIRING · ACCELERATING OUT OF EARTH ORBIT'],
-      cruise: ['TRANS-LUNAR COAST', `${tp ? tp.short : ''} TRAJECTORY`],
+      parking: Game.phaseT < TRANSFER.park / 2 ? ['EARTH ORBIT', 'ORBIT 1 OF 2 · SYSTEMS CHECKOUT'] : [`PREPARING FOR ${destOf().terms.inj.toUpperCase()}`, 'ORBIT 2 OF 2 · ENGINE ARMED'],
+      tli: [`${destOf().terms.inj.toUpperCase()} BURN`, 'ENGINE FIRING · ACCELERATING OUT OF EARTH ORBIT'],
+      cruise: [`${destOf().terms.coast.toUpperCase()}`, `${tp ? tp.short : ''} TRAJECTORY`],
       hazard: ['TRANS-LUNAR COAST', 'ANOMALY IN PROGRESS'], hazardDone: ['TRANS-LUNAR COAST', 'ANOMALY RESOLVED'],
       loi: M.flags.missedCapture ? ['LUNAR CAPTURE FAILED', 'NOT ENOUGH PROPELLANT TO BRAKE'] : ['ENTERING LUNAR ORBIT', 'RETRO-BURN · LUNAR ORBIT INSERTION'],
       arrived: M.flags.missedCapture ? ['LUNAR CAPTURE FAILED', 'LUNARIS-01 FLEW PAST THE MOON'] : M.failure ? ['CAPTURED · NO FUEL LEFT', 'TOO LITTLE PROPELLANT FOR A SCIENCE ORBIT'] : ['LUNAR ORBIT ESTABLISHED', 'CAPTURE CONFIRMED'],
@@ -599,7 +639,8 @@ const Scenes = (() => {
     const p = Draw.onEllipse(OR.x, OR.y, OR[act][0], OR[act][1], OR.rot, t * (act === 'low' ? 0.8 : 0.5));
     const cfg = Draw.craftCfg();
     if (!p.front) Draw.spacecraft(ctx, p.x, p.y, 0.5, Math.sin(t) * 0.2, cfg, t, { deploy: Game.deploys });
-    Draw.moon(ctx, OR.x, OR.y, OR.r, { lon: Draw.moonLon(Draw.lapseHours(t)) });
+    if (destOf().id === 'moon') Draw.moon(ctx, OR.x, OR.y, OR.r, { lon: Draw.moonLon(Draw.lapseHours(t)) });
+    else Draw.planetDisc(ctx, OR.x, OR.y, OR.r, DEST_DISC[destOf().id] || 'Mercury', t, false);
     for (const id of ['high', 'low']) { const [c, w, a] = orbitStyle(id); Draw.orbitHalf(ctx, OR.x, OR.y, OR[id][0], OR[id][1], OR.rot, true, c, w, a); }
     if (p.front) Draw.spacecraft(ctx, p.x, p.y, 0.75, Math.sin(t) * 0.2, cfg, t, { thrust: Game.phase === 'inserting', deploy: Game.deploys });
     const lp = Draw.onEllipse(OR.x, OR.y, OR.low[0], OR.low[1], OR.rot, 1.25), hp = Draw.onEllipse(OR.x, OR.y, OR.high[0], OR.high[1], OR.rot, 1.1);
@@ -634,7 +675,7 @@ const Scenes = (() => {
     background(ctx, t, 1.5);
     const reg = site(), view = Draw.siteView(reg);
     const tp = Draw.targetPos(SV.x, SV.y, SV.r, view);
-    const latT = reg.lat * D2R;
+    const latT = (reg.lat || 0) * D2R;   // guard: destination sites always carry coordinates
     let th;
     const scanP = clamp(Draw.progressT('scanning') / SCAN_TIME);
     const inScan = Game.state === 'SURVEY' && ['scanning', 'hazard', 'hazardDone'].includes(Game.phase);
@@ -645,7 +686,8 @@ const Scenes = (() => {
     const cfg = Draw.craftCfg();
     orbitPath(ctx, reg, view, false);
     if (!p.front) Draw.spacecraft(ctx, p.x, p.y, 0.55, 0, cfg, t, { deploy: Game.deploys });
-    Draw.moon(ctx, SV.x, SV.y, SV.r, { night: o.night || 0, view });
+    if (destOf().id === 'moon') Draw.moon(ctx, SV.x, SV.y, SV.r, { night: o.night || 0, view });
+    else Draw.planetDisc(ctx, SV.x, SV.y, SV.r, DEST_DISC[destOf().id] || 'Mercury', t, false);
     Draw.targetMarker(ctx, tp.x, tp.y, t, COL.amber, 0.9);
     orbitPath(ctx, reg, view, true);
     if (view === 'far') tag(ctx, 'FARSIDE VIEW · EARTH IS BEHIND THE MOON', 40, 690, COL.faint);
@@ -731,7 +773,8 @@ const Scenes = (() => {
   const TX_TIME = 5;
   SCENES.TRANSMISSION = (ctx, t, dt) => {
     background(ctx, t, 2); grid(ctx, 0.02);
-    Draw.moon(ctx, TX.m.x, TX.m.y, TX.m.r);
+    if (destOf().id === 'moon') Draw.moon(ctx, TX.m.x, TX.m.y, TX.m.r);
+    else Draw.planetDisc(ctx, TX.m.x, TX.m.y, TX.m.r, DEST_DISC[destOf().id] || 'Mercury', t, false);
     Draw.earth(ctx, TX.e.x, TX.e.y, TX.e.r, Draw.lapseHours(t));
     const tp = Draw.targetPos(TX.m.x, TX.m.y, TX.m.r, 'near');
     if (!tp.visible) tag(ctx, 'FAR SIDE TARGET · BEHIND THE LIMB', tp.x + 10, tp.y - 14, COL.amber);

@@ -1,7 +1,8 @@
 // State machine, main loop, input and boot.
-// Flow: TITLE → EXPLORE (solar system) → MOONVIEW → BRIEFING → OBJECTIVE → TARGET →
-//       DESIGN (origami engineer) → DESIGN_REVIEW → TRAJECTORY → LAUNCH → TRANSFER →
-//       ORBIT_DECISION → SURVEY (hazards) → MISSION_EVENT → TRANSMISSION → RESULT → REPORT
+// Flow: TITLE → EXPLORE (solar system) → MOONVIEW → BRIEFING → DESTINATION →
+//       OBJECTIVE → TARGET → DESIGN (origami engineer) → DESIGN_REVIEW → TRAJECTORY →
+//       LAUNCH → TRANSFER → ORBIT_DECISION (flybys skip straight to SURVEY) →
+//       SURVEY (hazards) → MISSION_EVENT → TRANSMISSION → RESULT → REPORT
 
 const Game = {
   state: 'TITLE', t: 0, sceneT: 0, phase: '', phaseT: 0,
@@ -53,6 +54,11 @@ const ENTER = {
     Sfx.whoosh(0.8);
     if (Game.focusBody !== 'Moon') Draw.Cam.tween(0, 0.4, 2.4, 1.2);
   },
+  DESTINATION() {
+    Game.phase = 'choose'; Game.choice = M.dest;
+    Draw.Cam.tween(0, 0.4, 0.34, 1.4);   // zoom out so the outer solar system reads
+    Sfx.whoosh(1.2);
+  },
   OBJECTIVE() { Game.phase = 'choose'; Game.choice = M.objective; },
   TARGET() { Game.phase = 'choose'; Game.choice = M.region; },
   DESIGN() { Game.phase = 'choose'; syncDeploys(true); },
@@ -77,6 +83,7 @@ const ENTER = {
   },
   TRANSFER() {
     Game.phase = 'parking'; M.flightPhase = 'EARTH_ORBIT'; Game.burn = null;
+    if (!M.travel) setTravel(Game.travelMode || 'balanced');   // defensive: never enter without a plan
     if (Math.random() >= M.travel.hazardChance) Game.hazardFired[1] = 'none';
     Draw.clearParticles();
   },
@@ -176,9 +183,9 @@ function update(dt) {
       const before = M.fuel;
       const chips = departEarth();
       M.flightPhase = 'TLI_BURN';
-      Game.burn = { label: 'TLI BURN', from: before, to: M.fuel, t0: Game.t, dur: TT.tli };
+      Game.burn = { label: 'DEPARTURE BURN', from: before, to: M.fuel, t0: Game.t, dur: TT.tli };
       Sfx.tli(TT.tli);
-      UI.toast('TRANS-LUNAR INJECTION', chips);
+      UI.toast(destOf().terms.inj.toUpperCase(), chips);
       Game.setPhase('tli');
     } else if (Game.phase === 'tli' && Game.phaseT >= TT.tli) {
       M.flightPhase = 'TRANS_LUNAR_TRANSFER';
@@ -188,14 +195,15 @@ function update(dt) {
       if (!Game.hazardFired[1] && Game.phaseT >= cs * 0.4) startHazard(1);
       else if (Game.phaseT >= cs) {
         const before = M.fuel;
+        const d = destOf();
         const chips = arrive();
-        Game.burn = M.failure ? null : { label: 'LOI BURN', from: before, to: M.fuel, t0: Game.t, dur: 1.4 };
+        Game.burn = M.failure ? null : { label: d.flyby ? 'TARGETING TRIM' : 'CAPTURE BURN', from: before, to: M.fuel, t0: Game.t, dur: 1.4 };
         if (M.failure) Sfx.failure(); else Sfx.burn(1.6);
-        UI.toast('LUNAR ORBIT INSERTION', chips);
+        UI.toast(d.terms.capture.toUpperCase(), chips);
         Game.setPhase('loi');
       }
     } else if (Game.phase === 'loi' && Game.phaseT >= TT.loi) {
-      if (!M.failure) { M.flightPhase = 'LUNAR_ORBIT'; Sfx.confirm(); }
+      if (!M.failure) { M.flightPhase = destOf().flyby ? 'FLYBY_APPROACH' : 'LUNAR_ORBIT'; Sfx.confirm(); }
       Game.setPhase('arrived');
     }
   }
@@ -223,7 +231,7 @@ function update(dt) {
     if (!Game.drainApplied && Game.phaseT >= 1) {
       Game.drainApplied = true;
       Game.eventDrain = eventDrain();
-      UI.toast('LUNAR NIGHT HEATER LOAD', applyEventDrain());
+      UI.toast(destOf().event.name.toUpperCase(), applyEventDrain());
       UI.hud();
     }
     if (Game.phaseT >= 2.6) Game.setPhase(M.failure ? 'done' : 'choose');
@@ -325,7 +333,7 @@ const ACTIONS = {
     const rank = BOARD.add({
       n: name.slice(0, 18), s: score.total, g: score.grade, st: M.missionStatus,
       sci: M.science, goal: scienceGoal(), diff: score.diff, mode: score.mode,
-      cond: scenario().name, obj: objective().name, reg: site().short,
+      dest: destOf().shortName, cond: scenario().name, obj: objective().name, reg: site().short,
       date: new Date().toISOString().slice(0, 10),
     });
     M.scoreRegistered = true;
@@ -342,6 +350,7 @@ const ACTIONS = {
     Draw.Cam.tween(0, 0.4, 1, 1.1);
     UI.render();
   },
+  'to-destination'() { Sfx.click(); Game.go('DESTINATION'); },
   'to-objective'() { Sfx.click(); Game.go('OBJECTIVE'); },
   'to-target'() { Sfx.click(); Game.go('TARGET'); },
   'to-design'() { Sfx.click(); Game.go('DESIGN'); },
@@ -362,7 +371,7 @@ const ACTIONS = {
   review() { if (computeDesign(Game.sel).complete) Game.go('DESIGN_REVIEW'); },
   redesign() { Sfx.click(); Game.go('DESIGN'); },
   'to-trajectory'() { if (Game.review && Game.review.ok) { Sfx.click(); Game.go('TRAJECTORY'); } },
-  'to-transfer'() { Sfx.click(); Game.go('TRANSFER'); },
+  'to-transfer'() { if (!M.selectedVehicle) return; Sfx.click(); Game.go('TRANSFER'); },   // only after a committed design
   'to-orbit'() { Sfx.click(); Game.go('ORBIT_DECISION'); },
   'to-survey'() { Sfx.click(); Game.go('SURVEY'); },
   plan() { Sfx.click(); Game.setPhase('choose'); },
@@ -384,7 +393,14 @@ const ACTIONS = {
     if (Game.phase !== 'choose') return;
     runOwned(OWNERS[s] || 'director', () => {
       Sfx.confirm();
-      if (s === 'OBJECTIVE') {
+      if (s === 'DESTINATION') {
+        if (!DESTS[id]) return;
+        const changed = M.dest !== id;
+        M.dest = id;
+        if (changed) { M.objective = null; M.region = null; }   // objective & site are per-world
+        M.budget = budgetCap();
+        Game.go('OBJECTIVE');
+      } else if (s === 'OBJECTIVE') {
         M.objective = id;
         Game.go('TARGET');
       } else if (s === 'TARGET') {

@@ -28,7 +28,7 @@ const OBJECTIVES = {
     question: 'What does the surface look like in fine detail, and where are the safe, interesting places?',
     values: 'Imaging coverage · terrain visibility',
     instruments: { camera: 14, ice: 2, radiation: 0, spectrometer: 2 },
-    dataRate: 0.45,      // GB of data produced per science point (game model)
+    dataRate: 0.36,      // GB of data produced per science point (game model)
     nasa: { key: 'Mean radius', ds: 'moon', label: 'Moon mean radius 1,737 km', note: 'An orbiter at ~100 km altitude images this whole sphere in weeks - terrain data drives every landing site choice since Apollo.' },
     consequence: 'Camera +14 per scan. High data volume: imaging eats storage and downlink.',
   },
@@ -37,7 +37,7 @@ const OBJECTIVES = {
     question: 'What is the surface made of - and what can be mined, refined or built from it?',
     values: 'Scientific composition data',
     instruments: { spectrometer: 14, camera: 2, ice: 4, radiation: 0 },
-    dataRate: 0.32,
+    dataRate: 0.28,
     nasa: { key: 'Maria (dark plains)|Rock chemistry', ds: 'regions', label: 'Maria chemistry: iron & titanium rich', note: 'Spectrometers from orbit mapped these provinces globally - composition decides where ISRU factories make sense.' },
     consequence: 'Spectrometer +14 per scan. Spectra are data-hungry but less than full imaging.',
   },
@@ -146,24 +146,24 @@ const SCENARIOS = {
     riskMult: 1.5, bonus: { radiation: 10 },
   },
   night: {
-    id: 'night', name: 'Long Lunar Night', icon: '☾',
-    brief: 'The survey will run deep into a lunar night. Heaters will run hard with no sunlight on the panels.',
-    effects: ['Lunar-night drain ×1.5 (battery absorbs most)', 'Using reserve power costs 20% (battery: 8%)'],
+    id: 'night', name: 'Deep Night / Eclipse', icon: '☾',
+    brief: 'The survey will run through darkness or an eclipse shadow. Heaters will run hard with no sunlight on the panels.',
+    effects: ['Night/eclipse drain ×1.5 (battery absorbs most)', 'Using reserve power costs 20% (battery: 8%)'],
     nasa: 'Synodic period (sunrise to sunrise)', nasaLabel: 'Lunar day + night cycle',
     drainMult: 1.5, reserve: 20, batteryReserve: 8,
   },
   budget: {
     id: 'budget', name: 'Budget Cut', icon: '$',
     brief: 'Funding was reduced after mission approval. Every dollar - and every subsystem choice - has to count.',
-    effects: ['Budget cap $80M instead of $100M'],
-    budget: 80,
+    effects: ['Budget cap cut to 80% of the destination norm (scaled to every world)'],
+    budgetFactor: 0.8,
   },
   ice: {
     id: 'ice', name: 'Ice Hunt', icon: '❄',
-    brief: 'Mission scientists want proof of polar water ice. The bar for success is higher everywhere.',
-    effects: ['Science goal raised to 80', 'Ice Probe +8 per scan at the South Pole'],
+    brief: 'Mission scientists want proof of buried water ice. The bar for success is higher everywhere.',
+    effects: ['Science goal raised to 80', 'Ice Probe +8 per scan at any ice site (polar craters, plumes, ice shells)'],
     nasa: 'Water in LCROSS impact plume (Cabeus crater; south pole)', nasaLabel: 'LCROSS plume water (Cabeus)',
-    goal: 80, bonus: { ice: 8 }, bonusRegion: 'south_pole',
+    goal: 80, bonus: { ice: 8 }, bonusRegion: 'south_pole', iceAny: true,
   },
 };
 
@@ -290,7 +290,7 @@ const NAVS = {
 const INSTRUMENTS = {
   camera: {
     id: 'camera', name: 'Imaging Camera', role: 'Surface imaging',
-    cost: 8, mass: 25, draw: 5, scan: 48,
+    cost: 8, mass: 25, draw: 5, scan: 50,
     gain: 'Cheap, light, low power', loss: 'Lowest base science',
   },
   radiation: {
@@ -305,7 +305,7 @@ const INSTRUMENTS = {
   },
   spectrometer: {
     id: 'spectrometer', name: 'Spectrometer', role: 'Composition analysis',
-    cost: 22, mass: 70, draw: 12, scan: 56,
+    cost: 20, mass: 55, draw: 10, scan: 58,
     gain: 'Highest base science', loss: 'Costliest, heaviest, power-hungry',
   },
 };
@@ -366,7 +366,7 @@ const ORBITS = {
 const SCANS = {
   quick:    { id: 'quick',    name: 'Quick Scan',    mult: 0.6,  power: -10, risk: 0,   desc: 'Short pass, minimal power and data.' },
   standard: { id: 'standard', name: 'Standard Scan', mult: 1.0,  power: -16, risk: +8,  desc: 'Balanced observation campaign.' },
-  deep:     { id: 'deep',     name: 'Deep Scan',     mult: 1.35, power: -27, risk: +16, desc: 'Long, intensive campaign - may overflow the recorder.' },
+  deep:     { id: 'deep',     name: 'Deep Scan',     mult: 1.35, power: -21, risk: +16, desc: 'Long, intensive campaign - may overflow the recorder.' },
 };
 
 const EVENT = {
@@ -467,18 +467,23 @@ const objective = () => OBJECTIVES[M.objective] || OBJECTIVES.mapping;
 const scenario = () => SCENARIOS[M.scenario] || SCENARIOS.solar;
 const site = () => SITES[M.region] || SITES.south_pole;
 // Difficulty-aware caps (DIFFS/MODE_CFG live in src/modes.js, loaded before this file).
-const baseBudget = () => scenario().budget || RULES.startBudget;
+// The destination multiplies both the budget norm and the science goal.
+const baseBudget = () => Math.round((destOf().budget) * (scenario().budgetFactor || 1));
 const budgetCap = () => {
-  if (MODE_CFG.mode === 'sandbox') return 150;
+  if (MODE_CFG.mode === 'sandbox') return Math.round(destOf().budget * 1.5);
   return Math.max(50, baseBudget() + diff().budget);
 };
-const scienceGoal = () => Math.max(30, (scenario().goal || RULES.scienceGoal) + diff().goal);
+const scienceGoal = () => Math.max(30, Math.round((scenario().goal || RULES.scienceGoal) * destOf().sciGoal) + diff().goal);
 
 // Per-scan bonus: objective affinity + site bonus + condition bonus.
+// The Ice Hunt condition applies its ice bonus at ANY destination's ice site
+// (polar craters, plume corridors, ice shells), not just the lunar south pole.
 function instrBonus(i) {
   const obj = objective(), sc = scenario();
   const objBonus = (obj.instruments[i.id] || 0);
-  const condBonus = !sc.bonusRegion || sc.bonusRegion === M.region ? ((sc.bonus || {})[i.id] || 0) : 0;
+  const iceSite = sc.iceAny && site().iceSite;
+  const condBonus = sc.bonusRegion ? ((sc.bonusRegion === M.region || iceSite) ? ((sc.bonus || {})[i.id] || 0) : 0)
+                                   : ((sc.bonus || {})[i.id] || 0);
   return objBonus + ((site().bonus || {})[i.id] || 0) + condBonus;
 }
 // Science multiplier from the site's objective affinity.
@@ -498,14 +503,35 @@ const clamp01 = x => Math.max(0.1, Math.min(1, x));
 const loiFuel = mass => Math.round(mass / 10);
 
 // Full consequences of a travel strategy for a spacecraft of the given mass + engine.
+// The Moon keeps the original distance-jitter model; every other destination uses
+// its own transit table and propellant scaling (fuelMult = energy of transfer +
+// capture relative to a lunar mission, tuned per destination).
 function travelPlan(id, mass = M.mass, engine = M.selectedEngine) {
   const m = TRAVEL_MODES[id], b = TRAVEL_MODES.balanced;
   const e = ENGINES[engine || 'std'];
+  const d = destOf();
+  const energy = Math.pow(m.speed / b.speed, 1.2);
+  if (d.id !== 'moon') {
+    const days = d.transit[id];
+    const hours = PARKING_HOURS + days * 24;
+    const refHours = PARKING_HOURS + d.transit.balanced * 24;
+    const fuelTotal = Math.round(mass / 10 * energy * d.fuelMult * (e ? e.fuelMult : 1));
+    const tli = Math.round(fuelTotal * d.tliShare), loi = fuelTotal - tli;
+    return {
+      id, name: m.name, short: m.short, usage: m.usage, dist: d.distKm, hours, cruiseHours: hours - PARKING_HOURS,
+      fuelTotal, tli, loi,
+      cruisePower: Math.min(12, Math.max(0, Math.round((days / 60) * 4))),
+      risk: rk(Math.max(0, Math.round((energy - 1) * 14))),
+      nightFactor: Math.max(0.5, 1 + 0.6 * (hours / refHours - 1)),
+      hazardChance: Math.max(0.35, Math.min(1, 0.55 + d.rad * 0.15)),
+      exposure: 1 + d.rad * 0.3,
+      modeRef: (d.modeRefs || {})[id] || m.ref,
+    };
+  }
   const dist = M.moonDistance || EARTH_MOON.mean, dr = dist / EARTH_MOON.mean;
   const cruiseHours = dist * m.path / m.speed / 3600;
   const hours = PARKING_HOURS + cruiseHours;
   const refCruise = EARTH_MOON.mean / b.speed / 3600;
-  const energy = Math.pow(m.speed / b.speed, 1.2);
   const fuelTotal = Math.round(mass / 10 * energy * Math.sqrt(dr) * (e ? e.fuelMult : 1));
   const tli = Math.round(fuelTotal * 0.6), loi = fuelTotal - tli;
   return {
@@ -515,34 +541,48 @@ function travelPlan(id, mass = M.mass, engine = M.selectedEngine) {
     nightFactor: 1 + 0.6 * ((PARKING_HOURS + cruiseHours) / (PARKING_HOURS + refCruise) - 1),
     hazardChance: clamp01((cruiseHours - 45) / 40),
     exposure: cruiseHours / refCruise,
+    modeRef: m.ref,
   };
 }
 
 // Selected engineer configuration -> full design numbers.
+// Solar-derived power scales with the destination's solar flux; the RTG does not.
+// Destinations with radiation belts add an environmental risk term that rad-hard
+// avionics and armor blunt (Jupiter is survivable only with the vault approach).
 function computeDesign(sel) {
   const v = VEHICLES[sel.vehicle], e = ENGINES[sel.engine], p = POWER_SYSTEMS[sel.power],
         th = THERMALS[sel.thermal], c = COMMS[sel.comms], n = NAVS[sel.nav],
         i = INSTRUMENTS[sel.payload], d = DATASYS[sel.data];
+  const dest = destOf();
   const groups = [v, e, p, th, c, n, i, d];
   const complete = groups.every(Boolean);
   const budgetUsed = BUS.cost + groups.reduce((a, g) => a + (g ? g.cost : 0), 0);
   const mass = BUS.mass + groups.reduce((a, g) => a + (g ? (g.propellantMass || g.mass || 0) : 0), 0);
   const fuelCap = v ? v.fuel + ((e && e.fuelBonus) || 0) : null;
   const draw = (i ? i.draw : 0) + (c ? c.power : 0) + (n ? n.power : 0) + (d ? d.power : 0);
-  const power = p ? p.power - draw : null;
+  const fluxFactor = p && p.rtg ? 1 : Math.max(0.3, Math.min(2, 0.55 + 0.45 * dest.flux));
+  const power = p ? Math.round(p.power * fluxFactor) - draw : null;
   const reg = site();
   const sciMult = objMult();
+  const envRisk = dest.rad ? Math.round(dest.rad * 6
+    * (sel.nav === 'radhard' ? 0.25 : 1) * (sel.thermal === 'armor' ? 0.6 : 1)) : 0;
+  const destFuelMult = dest.id === 'moon' ? 1 : dest.fuelMult;
+  const modeEnergies = ['fast', 'balanced', 'efficient'].map(id => Math.pow(TRAVEL_MODES[id].speed / TRAVEL_MODES.balanced.speed, 1.2));
+  const bestArrival = fuelCap != null
+    ? fuelCap - Math.min(...modeEnergies.map(en => Math.round(loiFuel(mass) * destFuelMult * (e ? e.fuelMult : 1) * en)))
+    : null;
   return {
     complete, budgetUsed, mass,
     fuel: fuelCap,
     capacity: v ? v.capacity : null,
     power,
-    arrivalFuel: fuelCap != null ? fuelCap - Math.round(loiFuel(mass) * Math.sqrt((M.moonDistance || EARTH_MOON.mean) / EARTH_MOON.mean)) : null,
+    arrivalFuel: bestArrival,
     comm: BUS.comm + (v ? v.comm : 0) + (p ? p.comm : 0) + (c ? c.comm : 0),
     storage: d ? d.storage : null,
     sciencePotential: i ? Math.round(i.scan * reg.sci * sciMult) + instrBonus(i) : null,
     drainMult: th ? th.drainMult : 1,
-    risk: rk((v ? v.risk : 0) + (p ? p.risk : 0) + (n ? n.risk || 0 : 0)),
+    risk: rk((v ? v.risk : 0) + (p ? p.risk : 0) + (n ? n.risk || 0 : 0)) + envRisk,
+    fluxFactor, envRisk,
   };
 }
 
@@ -550,26 +590,39 @@ function validateDesign(sel) {
   const d = computeDesign(sel);
   const v = VEHICLES[sel.vehicle];
   const cap = budgetCap();
+  const dest = destOf();
+  const thTier = { basic: 0, radiator: 1, armor: 2 }[sel.thermal] != null ? { basic: 0, radiator: 1, armor: 2 }[sel.thermal] : 0;
+  const envNeed = dest.thermalMin || 0;
   const checks = [
     {
-      id: 'budget', label: 'Budget', ok: d.budgetUsed <= cap,
+      id: 'budget', label: 'Budget', ok: d.budgetUsed <= cap, gate: true,
       value: `$${d.budgetUsed}M of $${cap}M`,
       fix: `Over budget by $${d.budgetUsed - cap}M. Swap any subsystem for a cheaper one.`,
     },
     {
-      id: 'mass', label: 'Mass', ok: d.capacity == null ? false : d.mass <= d.capacity,
+      id: 'mass', label: 'Mass', ok: d.capacity == null ? false : d.mass <= d.capacity, gate: true,
       value: `${d.mass} kg of ${d.capacity == null ? '?' : d.capacity} kg (${v.name})`,
       fix: `${Math.max(0, d.mass - d.capacity)} kg too heavy for the ${v.name}. Use a bigger rocket or lighter equipment.`,
     },
     {
-      id: 'power', label: 'Power', ok: d.power != null && d.power >= RULES.minPower,
+      id: 'power', label: 'Power', ok: d.power != null && d.power >= RULES.minPower, gate: true,
       value: `${d.power == null ? '—' : d.power}% (minimum ${RULES.minPower}%)`,
-      fix: 'Instrument, antenna, navigation and data systems draw too much power. Pick a stronger power system or lighter-load modules.',
+      fix: dest.flux < 0.3
+        ? 'Solar flux is far too weak this far from the Sun. Only the RTG (Radioisotope Generator) delivers full power here.'
+        : 'Instrument, antenna, navigation and data systems draw too much power. Pick a stronger power system or lighter-load modules.',
     },
     {
-      id: 'mission', label: 'Mission (fuel to reach orbit)', ok: d.arrivalFuel != null && d.arrivalFuel >= RULES.minArrivalFuel,
-      value: `${d.fuel}% → ${d.arrivalFuel}% after lunar arrival on a balanced transfer (minimum ${RULES.minArrivalFuel}%)`,
-      fix: 'Not enough propellant to brake into lunar orbit. Carry more fuel (bigger rocket, efficient engine, redundant tank) or reduce mass.',
+      id: 'mission', label: 'Mission (fuel to reach orbit)', ok: d.arrivalFuel != null && d.arrivalFuel >= RULES.minArrivalFuel, gate: true,
+      value: `${d.fuel}% → ${d.arrivalFuel}% after arrival on a balanced transfer (minimum ${RULES.minArrivalFuel}%)`,
+      fix: `Not enough propellant for ${dest.shortName} arrival. Carry more fuel (bigger rocket, efficient engine, redundant tank) or reduce mass.`,
+    },
+    envNeed > 0 && {
+      id: 'env', label: 'Environment (thermal protection)', gate: true,
+      ok: thTier >= envNeed,
+      value: `${THERMALS[sel.thermal] ? THERMALS[sel.thermal].name : 'no thermal system'} (needs tier ${envNeed})`,
+      fix: envNeed >= 2
+        ? `${dest.shortName} requires Hardened Armor + Whipple: the environment here destroys lesser spacecraft (Venera 13 survived 127 minutes).`
+        : `${dest.shortName} requires at least the Radiator + Insulation kit: extreme thermal cycling flexes lesser designs apart.`,
     },
     {
       id: 'fit', label: 'Objective fit', ok: (() => {
@@ -585,12 +638,16 @@ function validateDesign(sel) {
         return `${objective().name} rewards ${name} most (+${top} per scan). A different instrument is playable - but harder.`;
       })(),
     },
-  ];
-  return { design: d, checks, ok: checks.slice(0, 4).every(c => c.ok) };
+  ].filter(Boolean);
+  return { design: d, checks, ok: checks.filter(c => c.gate).every(c => c.ok) };
 }
 
 // ---------------------------------------------------------------- hazard odds
+// Moon keeps its original weight model; every other destination uses its own
+// per-slot tables (destinations.js) blended with rocket / orbit / condition context.
 function hazardWeights(slot, ctx = {}) {
+  const d = destOf();
+  if (d.id !== 'moon') return destHazardWeights(slot, ctx);
   const solar = M.scenario === 'solar';
   const rocket = ctx.rocket || M.selectedVehicle || 'medium';
   const low = (ctx.orbit || M.selectedOrbit) === 'low';
@@ -628,18 +685,23 @@ const SELECT_KEYS = {
   THERMALS: 'selectedThermal', COMMS: 'selectedComms', NAVS: 'selectedNav',
   INSTRUMENTS: 'selectedPayload', DATASYS: 'selectedData',
 };
+// Top-level const tables do not attach to window, so resolve them explicitly.
+const KIT_TABLES = { VEHICLES, ENGINES, POWER_SYSTEMS, THERMALS, COMMS, NAVS, INSTRUMENTS, DATASYS };
 function counterFor(h) {
+  if (!h.kitRef) return { table: null, id: null, selected: false, option: null };   // kit-less hazards (e.g. plume fly-through)
   const [table, id] = h.kitRef.split('.');
   const sel = M[SELECT_KEYS[table]];
-  return { table, id, selected: sel === id, option: (window[table] || {})[id] };
+  return { table, id, selected: sel === id, option: (KIT_TABLES[table] || {})[id] };
 }
 
 // Chance that each hazard strikes at least once, for the pre-launch threat forecast.
+// Only the destination's own hazard pool is forecast.
 function threatForecast() {
+  const pool = destOf().pool || Object.keys(HAZARDS);
   const p = (slot, orbit) => { const w = hazardWeights(slot, { orbit }); const t = Object.values(w).reduce((a, b) => a + b, 0); return id => (w[id] || 0) / t; };
   const p1 = p(1, 'high'), p2low = p(2, 'low'), p2high = p(2, 'high');
   const lvl = x => (x >= 0.4 ? 'HIGH' : x >= 0.2 ? 'MODERATE' : 'LOW');
-  return Object.values(HAZARDS).map(h => {
+  return Object.values(HAZARDS).filter(h => pool.includes(h.id)).map(h => {
     const both = orbit => 1 - (1 - p1(h.id)) * (1 - (orbit === 'low' ? p2low : p2high)(h.id));
     const worst = Math.max(both('low'), both('high'));
     const c = counterFor(h);
@@ -651,7 +713,7 @@ function threatForecast() {
 function resetMission(scenarioId) {
   const prev = M.scenario;
   Object.assign(M, {
-    missionStage: 'TITLE', checkpoint: 0,
+    missionStage: 'TITLE', checkpoint: 0, dest: null,
     scenario: scenarioId || pickScenario(prev),
     objective: null, region: null,
     budget: RULES.startBudget, budgetUsed: 0, mass: 0,
@@ -670,7 +732,8 @@ function resetMission(scenarioId) {
   });
   M.budget = budgetCap();
 }
-resetMission();
+// NOTE: the load-time resetMission() call lives at the END of destinations.js -
+// it must run after destOf/DESTS exist, otherwise budgetCap() hits a TDZ error.
 
 const RES_LABEL = { power: 'Power', fuel: 'Fuel', science: 'Science', risk: 'Risk', budget: 'Budget', mass: 'Mass', data: 'Data' };
 
@@ -764,36 +827,53 @@ function setTravel(id) {
   const tp = travelPlan(id);
   M.travelMode = id;
   M.travel = tp;
+  const d = destOf();
   addLog('Travel', tp.name, [note(`≈${MathX.fmtDuration(tp.hours)}`), chip('fuel', -tp.fuelTotal)].concat(tp.risk ? [chip('risk', tp.risk)] : []),
-    `Estimated lunar arrival ${MathX.fmtDuration(tp.hours, true)}; transfer propellant ${tp.fuelTotal}% (TLI ${tp.tli}% + LOI ${tp.loi}%).`);
+    `Estimated ${d.shortName} arrival ${MathX.fmtDuration(tp.hours, true)}; transfer propellant ${tp.fuelTotal}% (departure ${tp.tli}% + capture ${tp.loi}%).${d.modeRefs ? ' ' + (tp.modeRef || '') : ''}`);
   return tp;
 }
 
 function departEarth() {
   const tp = M.travel || setTravel('balanced');
+  const d = destOf();
   M.flightPhase = 'TRANS_LUNAR_TRANSFER';
-  return applyFx('Transfer', 'Trans-lunar injection burn', { fuel: -tp.tli, risk: tp.risk },
+  return applyFx('Transfer', `${d.terms.inj} burn`, { fuel: -tp.tli, risk: tp.risk },
     `${tp.name}: ${tp.usage.toLowerCase()}-energy departure from Earth orbit - game model.`);
 }
 
 function arrive() {
   const tp = M.travel || setTravel('balanced');
+  const d = destOf();
   const chips = [];
   if (tp.cruisePower) chips.push(...applyFx('Transfer', `Cruise systems (${MathX.fmtDuration(tp.cruiseHours)} coast)`, { power: -tp.cruisePower },
     'Heaters, attitude control and communications while coasting - game model.'));
   if (M.failure) return chips;
+  if (d.flyby) {
+    // Flyby destinations: no capture burn - a small targeting trim, then straight to the pass.
+    M.flightPhase = 'FLYBY_APPROACH';
+    const trim = Math.max(2, Math.round(tp.loi * 0.25));
+    if (M.fuel < trim) {
+      M.failure = `Not enough propellant for the ${d.terms.capture.toLowerCase()} trim (${M.fuel}% left, ${trim}% needed) - the pass geometry drifted off.`;
+      addLog('Transfer', 'TARGETING TRIM FAILED', [{ t: `✖ ${d.terms.captureFail}`, tone: 'bad' }], M.failure);
+      M.fuel = 0;
+      return chips.concat([{ t: `✖ ${d.terms.captureFail}`, tone: 'bad' }]);
+    }
+    chips.push(...applyFx('Transfer', `${d.terms.capture} trim`, { fuel: -trim },
+      `No capture burn on a flyby: a small trim sets the ${d.shortName} aimpoint (New Horizons hit ~100 km after 9.5 years).`));
+    return chips;
+  }
   M.flightPhase = 'LUNAR_ORBIT_INSERTION';
   if (M.fuel < tp.loi) {
-    M.failure = `Not enough propellant for lunar orbit insertion (${M.fuel}% left, ${tp.loi}% needed) - LUNARIS-01 flew past the Moon.`;
+    M.failure = `Not enough propellant for ${d.terms.capture.toLowerCase()} (${M.fuel}% left, ${tp.loi}% needed) - LUNARIS-01 ${d.terms.captureFail}.`;
     M.flags.missedCapture = true;
-    addLog('Transfer', 'LUNAR ORBIT INSERTION FAILED', [{ t: '✖ Missed lunar capture', tone: 'bad' }], M.failure);
+    addLog('Transfer', `${d.terms.capture.toUpperCase()} FAILED`, [{ t: `✖ Missed capture`, tone: 'bad' }], M.failure);
     M.fuel = 0;
-    return chips.concat([{ t: '✖ Missed lunar capture', tone: 'bad' }]);
+    return chips.concat([{ t: '✖ Missed capture', tone: 'bad' }]);
   }
-  chips.push(...applyFx('Transfer', 'Lunar orbit insertion burn', { fuel: -tp.loi },
+  chips.push(...applyFx('Transfer', `${d.terms.capture} burn`, { fuel: -tp.loi },
     `Braking burn for a ${tp.name.toLowerCase()} arrival (spacecraft mass ${M.mass} kg) - game model.`));
   if (!orbitAllowed('high') && !orbitAllowed('low')) {
-    M.failure = `Captured by the Moon, but only ${M.fuel}% propellant is left - not enough to reach a stable science orbit.`;
+    M.failure = `Captured by ${d.shortName}, but only ${M.fuel}% propellant is left - not enough to reach a stable science orbit.`;
     addLog('Transfer', 'NO SCIENCE ORBIT', [{ t: '✖ Orbit unreachable', tone: 'bad' }], M.failure);
   }
   return chips;
@@ -809,7 +889,8 @@ function orbitAllowed(id) { return M.fuel + orbitFx(id).fuel >= 0; }
 function chooseOrbit(id) {
   M.selectedOrbit = id;
   const pc = site().fuel;
-  const chips = applyFx('Orbit', ORBITS[id].name, orbitFx(id), ORBITS[id].desc + (pc ? ` Includes ${pc}% fuel to align the orbit over ${site().short.toLowerCase()}.` : ''));
+  const name = (destOf().orbits || {})[id] || ORBITS[id].name;
+  const chips = applyFx('Orbit', name, orbitFx(id), ORBITS[id].desc + (pc ? ` Includes ${pc}% fuel to align the orbit over ${site().short.toLowerCase()}.` : ''));
   if (M.fuel < RULES.lowFuel && !M.flags.lowFuel) {
     M.flags.lowFuel = true;
     const r = rk(15);
@@ -821,9 +902,19 @@ function chooseOrbit(id) {
 }
 
 // ---- Hazards
+// Light-time lag: at far destinations ground-in-the-loop responses cost more
+// unless the response is your onboard kit (autonomy) or you carry a large
+// high-gain antenna (autonomy-grade link). See lagFactor in destinations.js.
 function hazardOptions(id, slot) {
   const h = HAZARDS[id];
-  const opts = h.options(slot).map(o => Object.assign({}, o, { fx: rkFx(o.fx), bad: o.bad ? rkFx(o.bad) : null }));
+  const opts = h.options(slot).map(o => {
+    const lag = lagFactor(!!o.isKit);
+    return Object.assign({}, o, {
+      fx: scaleFxLag(rkFx(o.fx), lag),
+      bad: o.bad ? scaleFxLag(rkFx(o.bad), lag) : null,
+      lagged: lag > 1,
+    });
+  });
   const c = counterFor(h);
   if (c.selected && h.kit) opts.unshift(Object.assign({}, h.kit, { fx: rkFx(h.kit.fx), isKit: true }));
   return opts;
@@ -856,6 +947,7 @@ function resolveHazard(id, optId, slot, roll = Math.random()) {
 // ---- Survey: science + data generation (storage cap applies)
 function scanFx(id) {
   const s = SCANS[id], i = INSTRUMENTS[M.selectedPayload], reg = site();
+  if (!i) return { science: 0, power: 0, risk: 0, _base: 0, _bonus: 0 };   // guard: no committed payload yet
   const base = Math.round(i.scan * s.mult * reg.sci * objMult());
   const bonus = instrBonus(i);
   return { science: Math.max(0, base + bonus), power: s.power, risk: rk(s.risk), _base: base, _bonus: bonus };
@@ -884,16 +976,17 @@ function runScan(id) {
   return chips;
 }
 
-// ---- Mission event (lunar night heater load)
+// ---- Mission event (deep night / eclipse heater load; RTG waste heat helps)
 const hasBattery = () => POWER_SYSTEMS[M.selectedPowerSystem] && POWER_SYSTEMS[M.selectedPowerSystem].battery;
+const hasRtg = () => POWER_SYSTEMS[M.selectedPowerSystem] && POWER_SYSTEMS[M.selectedPowerSystem].rtg;
 function eventDrain() {
   const th = THERMALS[M.selectedThermal] || THERMALS.basic;
   const base = hasBattery() ? EVENT.batteryDrain : EVENT.drain;
-  return Math.max(2, Math.round(base * th.drainMult * site().drain * (scenario().drainMult || 1) * (M.travel ? M.travel.nightFactor : 1)));
+  return Math.max(2, Math.round(base * th.drainMult * (hasRtg() ? 0.8 : 1) * site().drain * (scenario().drainMult || 1) * (M.travel ? M.travel.nightFactor : 1)));
 }
 function applyEventDrain() {
-  return applyFx('Event', 'Lunar night heater load', { power: -eventDrain() },
-    hasBattery() ? 'Battery backup covered most of the heater load.' : 'No battery: heaters drew directly from the power budget.');
+  return applyFx('Event', `${destOf().event.name} drain`, { power: -eventDrain() },
+    hasBattery() ? 'Battery backup covered most of the heater load.' : hasRtg() ? 'The RTG\'s waste heat lightened the heater load.' : 'No battery: heaters drew directly from the power budget.');
 }
 
 function eventFx(id) {
@@ -910,9 +1003,10 @@ function chooseEvent(id) {
 }
 
 // ---- Transmission (RETURN): stored data -> returned data -> science
+// Deep-space link budgets are worse: each destination adds a tx multiplier.
 function txCost(id, comm = M.communication) {
   const base = id === 'full' ? 10 + (100 - comm) / 3 : 4 + (100 - comm) / 6;
-  return Math.round(base * site().tx);
+  return Math.round(base * site().tx * destOf().txMult);
 }
 function txFx(id) {
   const mult = TRANSMISSIONS[id].mult;
@@ -940,9 +1034,10 @@ function transmit(id) {
     fx.science = returnable - M.science;
     M.dataReturned = Math.round(M.dataStored * mult * 10) / 10;
   }
-  const far = site().side === 'far' ? ' Far side: data stored and relayed when LUNARIS-01 rounds the limb.' : '';
+  const far = site().side === 'far' ? ` Far side: data stored and relayed when LUNARIS-01 rounds the limb.` : '';
+  const delay = destOf().delayMin >= 15 ? ` One-way light time ${destOf().delayLabel}: the ground sees everything ${destOf().delayMin >= 120 ? 'hours' : 'minutes'} late.` : '';
   chips.push(...applyFx('Transmission', TRANSMISSIONS[id].name, fx,
-    `Comm capability ${M.communication} (${commLabel(M.communication)}): link cost ${cost}% power.${far}`));
+    `Comm capability ${M.communication} (${commLabel(M.communication)}): link cost ${cost}% power.${far}${delay}`));
 
   if (!M.failure && M.risk >= RULES.riskHigh && M.risk < RULES.riskCritical) {
     const loss = Math.round(M.science * RULES.anomalyLoss);
@@ -1014,7 +1109,7 @@ function strategyLabel() {
   if (bold >= 3) return { name: 'SCIENCE-FOCUSED', next: 'Try a safety-focused run: higher orbit, Standard Scan and protect your margins.' };
   if (careful >= 3) return { name: 'SAFETY-FOCUSED', next: 'Try an efficiency-focused run: a Light rocket and a design under $65M.' };
   if (M.budgetUsed <= 65) return { name: 'EFFICIENCY-FOCUSED', next: 'Try a science-focused run: the objective\'s best instrument, low orbit and Deep Scan.' };
-  return { name: 'BALANCED', next: 'Try another target: each region rewards a different objective-instrument pairing.' };
+  return { name: 'BALANCED', next: 'Try another world or site: every destination rewards a different objective-instrument pairing.' };
 }
 
 // ---- LEARN: mission log persisted across runs for design comparison
@@ -1036,6 +1131,7 @@ const HISTORY = {
 function recordRun() {
   if (!M.region || !M.objective) return;   // only record completed missions
   const score = computeScore();
+  if (M.missionStatus === 'SUCCESS') ACH.award(M.dest || 'moon', score.total, score.grade);
   HISTORY.save({
     date: new Date().toISOString().slice(0, 10),
     status: M.missionStatus,
@@ -1044,6 +1140,7 @@ function recordRun() {
     science: M.science, goal: scienceGoal(),
     power: M.power, fuel: M.fuel,
     budget: M.budgetUsed, risk: M.risk,
+    dest: destOf().shortName,
     objective: objective().name, region: site().short,
     travel: M.travel ? M.travel.short : '—',
     condition: scenario().name,
