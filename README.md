@@ -81,11 +81,12 @@ Every displayed value carries a confidence tag and source tooltip:
 | `LAB SIMULANT` | measured on simulant, not real Moon dust |
 | `GAME MODEL` | simplified gameplay number — **never** a NASA measurement |
 
-Dataset inventory (all in `data/`, provenance in [docs/DATA.md](docs/DATA.md)): the four original
+Dataset inventory (provenance in [docs/DATA.md](docs/DATA.md)): the four original
 datasets (environment, dust, orbit, regions) + eleven new ones built for LUNARIS: planetary fact-sheet
 bodies, JPL Keplerian elements, landing sites, maria, craters, polar-ice evidence, ISRU resources,
 Apollo moonquake catalog, temperature profile, Earth-Moon transfer examples, and a lunar mission
-history (Luna 1 → Artemis II).
+history (Luna 1 → Artemis II) — plus a raw scientific reference dataset in `data/raw/`:
+the full Robbins lunar crater database (384,278 craters ≥ 1 km, USGS v1, not loaded by the runtime).
 
 ## Architecture
 

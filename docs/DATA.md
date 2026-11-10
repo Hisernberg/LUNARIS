@@ -27,3 +27,13 @@ Notes
 - Mini-SAR tonnage is a minimum estimate ("at least 600 million metric tons", NASA 2010).
 - The game additionally derives values at runtime (radio delay, scale comparisons, Moon phase model);
   those display the `DERIVED FROM NASA` or `GAME MODEL` tag, never `NASA DATA`.
+
+## Raw reference dataset (not loaded by the game runtime)
+
+| File | Rows | Source |
+|---|---|---|
+| data/raw/lunar_craters_robbins_full.csv | 384,278 | **Moon Crater Database v1 Robbins** (S.J. Robbins, 2019), USGS Astrogeology — retrieved via the Hugging Face mirror `juliensimon/lunar-craters-robbins` (file `data/lunar_craters.parquet`, 2026-11-10); official page: https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins |
+
+Every lunar impact crater ≥ 1 km: id, latitude, longitude, diameter, depth, size class.
+`data/raw/` is excluded from the game's embedded fallback by design (tools/embed-csv.js scans
+only top-level `data/*.csv`); see data/raw/README.md.
