@@ -44,6 +44,19 @@ and receives a **visual scientific debrief** explaining why the mission succeede
 **▶ https://hisernberg.github.io/LUNARIS/** — the game is deployed live on GitHub Pages
 (all 15 datasets load over https; the same build also works offline — see below).
 
+## v2 · MISSION CONTROL — ways to play
+
+| Mode | What it is |
+| --- | --- |
+| **Solo Career** | The full mission loop with score, grade (S–D) and Hall of Fame. |
+| **Team Mission (2–4, hot-seat)** | Pass one console around: Mission Director, Spacecraft Engineer, Science Lead and Operations each *own* their calls; screens hand over automatically and the owner commits every decision. |
+| **Sandbox** | $150M, pick your own condition, generous margins — experiment freely. |
+| **Challenge codes** | `COPY MISSION CODE` packs a complete design (difficulty, condition, objective, site, all subsystems) into one URL. Send it to a friend: same design, who flies it better? Codes auto-load from `#m=…` links. |
+
+**Difficulties:** CADET (helpful, forgiving) · ENGINEER (the designed experience) · VETERAN (tight budget, harsher odds, ×1.35 score). The composite score is fully transparent — every point line (science, status, budget efficiency, margins, risk control, hazard handling, team synergy) is shown in the debrief.
+
+**Also in v2:** autosave + RESUME, first-run coaching tips per phase, a 19-term mission glossary (`?`), a resource-timeline chart (power/fuel/science/risk across the whole mission) in the report, a local Hall of Fame, reduced-motion support and keyboard access (1–4 pick options, M mute, ? glossary).
+
 ## Play it in 30 seconds
 
 No installation, no build step, no internet connection needed.

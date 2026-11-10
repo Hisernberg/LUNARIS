@@ -23,9 +23,11 @@ Game.go = function (state) {
   this.sceneT = 0; this.phase = ''; this.phaseT = 0;
   this.preview = null; this.choice = null;
   if (state === 'REPORT' || state === 'TITLE' || state === 'DESIGN') UI.hideToast();
+  if (state === 'TITLE' || state === 'REPORT') SAVE.clear(); else SAVE.store(state);
   const enter = ENTER[state];
   if (enter) enter();
   UI.render();
+  Team.suggest(state);      // hot-seat: pass the console when another role owns this screen
 };
 
 Game.setPhase = function (p) { this.phase = p; this.phaseT = 0; this.choice = null; this.preview = null; UI.render(); };
@@ -92,6 +94,8 @@ const ENTER = {
     if (status === 'SUCCESS') Sfx.success(); else if (status === 'FAILURE') Sfx.failure(); else Sfx.partial();
   },
   REPORT() { recordRun(); },
+  MODE() { Game.diffPick = MODE_CFG.diff; },
+  TEAMSETUP() { Team.draft = [{ n: 'P1', role: 'director' }, { n: 'P2', role: 'science' }]; },
 };
 
 // ---------------------------------------------------------------- hazards
@@ -232,8 +236,101 @@ function update(dt) {
 }
 
 // ---------------------------------------------------------------- actions
+// Hot-seat ownership: anyone may preview/discuss, the owning role commits.
+// If the wrong role is at the console, a handover overlay collects the click intent.
+function runOwned(ownerKind, fn) {
+  if (!Team.enabled()) { fn(); return; }
+  const m = Team.memberByRole(ownerKind) || Team.list[0];
+  if (!m || m.i === Team.active) { fn(); return; }
+  Sfx.click();
+  Team.ask(m, fn);
+}
+
 const ACTIONS = {
   start() { Sfx.startMusic(); Sfx.confirm(); Game.go('BRIEFING'); },
+  modes() { Sfx.confirm(); Game.go('MODE'); },
+  resume() {
+    const snap = SAVE.peek();
+    if (!snap || !SAVE.restore()) return;
+    Sfx.confirm();
+    Game.go(snap.state);
+    UI.toast('MISSION RESUMED', [{ t: `▲ Continuing from ${snap.state.toLowerCase()} phase`, tone: 'good' }]);
+  },
+  'set-diff'(el) { Game.diffPick = el.dataset.diff; Sfx.select(); UI.render(); },
+  'mode-start'() {
+    Sfx.startMusic(); Sfx.confirm();
+    MODE_CFG.mode = 'career'; MODE_CFG.diff = Game.diffPick || 'engineer'; MODE_CFG.team = null;
+    Team.list = [];
+    SAVE.clear(); resetMission();
+    Game.go('BRIEFING');
+  },
+  'mode-team'() { Sfx.confirm(); Game.go('TEAMSETUP'); },
+  'mode-sandbox'() {
+    Sfx.startMusic(); Sfx.confirm();
+    MODE_CFG.mode = 'sandbox'; MODE_CFG.diff = 'engineer'; MODE_CFG.team = null;
+    Team.list = [];
+    SAVE.clear(); resetMission();
+    Game.go('BRIEFING');
+  },
+  'team-add'() {
+    if (Team.draft.length >= 4) return;
+    const used = Team.draft.map(p => p.role);
+    const role = ['director', 'science', 'engineer', 'ops'].find(r => !used.includes(r));
+    Team.draft.push({ n: `P${Team.draft.length + 1}`, role });
+    Sfx.select(); UI.render();
+  },
+  'team-del'(el) {
+    if (Team.draft.length <= 2) return;
+    Team.draft.splice(+el.dataset.i, 1);
+    Team.draft.forEach((p, i) => { if (!p.n.trim()) p.n = `P${i + 1}`; });
+    Sfx.click(); UI.render();
+  },
+  'team-start'() {
+    if (Team.draft.length < 2) return;
+    Sfx.startMusic(); Sfx.confirm();
+    MODE_CFG.mode = 'team'; MODE_CFG.diff = Game.diffPick || 'engineer';
+    MODE_CFG.team = Team.draft.map(p => ({ n: p.n.trim() || 'CREW', role: p.role }));
+    Team.setup(MODE_CFG.team);
+    SAVE.clear(); resetMission();
+    Game.go('BRIEFING');
+  },
+  'handover-ready'() { Sfx.confirm(); Team.ready(); },
+  'handover-skip'() { Sfx.click(); Team.skip(); },
+  glossary() { Sfx.click(); UI.showGlossary(); },
+  'modal-close'() { Sfx.click(); UI.hideModal(); },
+  'tip-dismiss'() { SEEN.mark(Game.state); Sfx.click(); UI.render(); },
+  'copy-share'() {
+    Sfx.click();
+    UI.copyText(SHARE.url(), 'CHALLENGE LINK');
+  },
+  'code-load'() {
+    const input = document.getElementById('code-input');
+    const val = (input && input.value || '').trim();
+    if (!val) { UI.toast('MISSION CODE', [{ t: '▼ Paste a code first', tone: 'bad' }]); return; }
+    const err = SHARE.applyCode(val);
+    if (err) { Sfx.deny(); UI.toast('MISSION CODE', [{ t: `▼ ${err}`, tone: 'bad' }]); return; }
+    Sfx.confirm();
+    history.replaceState(null, '', location.pathname + location.search);
+    Game.go('DESIGN_REVIEW');
+    UI.toast('MISSION CODE LOADED', [{ t: '▲ Run the design review and fly it', tone: 'good' }]);
+  },
+  'board-clear'() { BOARD.clear(); Sfx.click(); UI.render(); },
+  'register-score'() {
+    if (!M.missionStatus) return;
+    const input = document.getElementById('score-name');
+    const name = ((input && input.value) || '').trim() || (Team.enabled() ? `TEAM OF ${Team.size()}` : 'DIRECTOR');
+    const score = M.score || computeScore();
+    const rank = BOARD.add({
+      n: name.slice(0, 18), s: score.total, g: score.grade, st: M.missionStatus,
+      sci: M.science, goal: scienceGoal(), diff: score.diff, mode: score.mode,
+      cond: scenario().name, obj: objective().name, reg: site().short,
+      date: new Date().toISOString().slice(0, 10),
+    });
+    M.scoreRegistered = true;
+    Sfx.success();
+    UI.toast('HALL OF FAME', [{ t: `▲ ${name} registered · rank #${rank}`, tone: 'good' }]);
+    UI.render();
+  },
   explore() { Sfx.startMusic(); Sfx.confirm(); Game.go('EXPLORE'); },
   'back-explore'() { Sfx.click(); Game.go('EXPLORE'); },
   'to-mission'() { Sfx.confirm(); Game.go('BRIEFING'); },
@@ -248,14 +345,16 @@ const ACTIONS = {
   'to-design'() { Sfx.click(); Game.go('DESIGN'); },
   pick(el) {
     const g = el.dataset.group, id = el.dataset.id;
-    const isNew = !Game.sel[g];
-    Game.sel[g] = id;
-    if (isNew && DEPLOY_KEYS.includes(g)) {
-      Game.foldAt[g] = Game.t; Game.deploys[g] = 0;
-      Game.foldFlash = Game.t;
-      Sfx.fold();
-    } else Sfx.select();
-    UI.render();
+    runOwned(GROUP_OWNER[g] || 'director', () => {
+      const isNew = !Game.sel[g];
+      Game.sel[g] = id;
+      if (isNew && DEPLOY_KEYS.includes(g)) {
+        Game.foldAt[g] = Game.t; Game.deploys[g] = 0;
+        Game.foldFlash = Game.t;
+        Sfx.fold();
+      } else Sfx.select();
+      UI.render();
+    });
   },
   review() { if (computeDesign(Game.sel).complete) Game.go('DESIGN_REVIEW'); },
   redesign() { Sfx.click(); Game.go('DESIGN'); },
@@ -278,39 +377,41 @@ const ACTIONS = {
   confirm() {
     const id = Game.choice, s = Game.state;
     if (!id) return;
-    if (Game.phase === 'hazard') { resolveActiveHazard(id); return; }
+    if (Game.phase === 'hazard') { runOwned('ops', () => resolveActiveHazard(id)); return; }
     if (Game.phase !== 'choose') return;
-    Sfx.confirm();
-    if (s === 'OBJECTIVE') {
-      M.objective = id;
-      Game.go('TARGET');
-    } else if (s === 'TARGET') {
-      M.region = id;
-      Game.go('DESIGN');
-    } else if (s === 'TRAJECTORY') {
-      const d = computeDesign(Game.sel);
-      if (d.fuel - travelPlan(id, d.mass, M.selectedEngine || Game.sel.engine).fuelTotal < RULES.minArrivalFuel) return;
-      Game.travelMode = id;
-      Game.go('LAUNCH');
-    } else if (s === 'ORBIT_DECISION') {
-      if (!orbitAllowed(id)) return;
-      const chips = chooseOrbit(id);
-      Sfx.burn(1.8);
-      UI.toast(ORBITS[id].name.toUpperCase(), chips);
-      Game.setPhase('inserting');
-    } else if (s === 'SURVEY') {
-      M.selectedObservation = id;
-      Sfx.scan(Scenes.SCAN_TIME);
-      Game.setPhase('scanning');
-    } else if (s === 'MISSION_EVENT') {
-      const chips = chooseEvent(id);
-      UI.toast(`OPTION ${EVENT.options[id].key}`, chips);
-      Game.setPhase('done');
-    } else if (s === 'TRANSMISSION') {
-      M.selectedTransmission = id;
-      Sfx.transmit(Scenes.TX_TIME, id === 'full');
-      Game.setPhase('sending');
-    }
+    runOwned(OWNERS[s] || 'director', () => {
+      Sfx.confirm();
+      if (s === 'OBJECTIVE') {
+        M.objective = id;
+        Game.go('TARGET');
+      } else if (s === 'TARGET') {
+        M.region = id;
+        Game.go('DESIGN');
+      } else if (s === 'TRAJECTORY') {
+        const d = computeDesign(Game.sel);
+        if (d.fuel - travelPlan(id, d.mass, M.selectedEngine || Game.sel.engine).fuelTotal < RULES.minArrivalFuel) return;
+        Game.travelMode = id;
+        Game.go('LAUNCH');
+      } else if (s === 'ORBIT_DECISION') {
+        if (!orbitAllowed(id)) return;
+        const chips = chooseOrbit(id);
+        Sfx.burn(1.8);
+        UI.toast(ORBITS[id].name.toUpperCase(), chips);
+        Game.setPhase('inserting');
+      } else if (s === 'SURVEY') {
+        M.selectedObservation = id;
+        Sfx.scan(Scenes.SCAN_TIME);
+        Game.setPhase('scanning');
+      } else if (s === 'MISSION_EVENT') {
+        const chips = chooseEvent(id);
+        UI.toast(`OPTION ${EVENT.options[id].key}`, chips);
+        Game.setPhase('done');
+      } else if (s === 'TRANSMISSION') {
+        M.selectedTransmission = id;
+        Sfx.transmit(Scenes.TX_TIME, id === 'full');
+        Game.setPhase('sending');
+      }
+    });
   },
   'resume-hazard'() { Sfx.click(); if (M.failure) Game.go('RESULT'); else resumeFromHazard(); },
   'to-event'() { Sfx.click(); Game.go(M.failure ? 'RESULT' : 'MISSION_EVENT'); },
@@ -325,6 +426,12 @@ const ACTIONS = {
     Game.review = null; Game.lastGain = 0; Game.eventDrain = 0; Game.hazard = null; Game.hazardFired = {};
     Draw.clearParticles();
     Game.go('BRIEFING');
+  },
+  'pick-cond'(el) {
+    if (MODE_CFG.mode !== 'sandbox') return;
+    resetMission(el.dataset.id);       // re-rolls budget etc. for the chosen condition
+    Sfx.select();
+    UI.render();
   },
   title() { Sfx.click(); Game.go('TITLE'); },
   mute() { Sfx.init(); Sfx.startMusic(); Sfx.toggleMute(); UI.setMuteLabel(); },
@@ -430,7 +537,10 @@ function onHover(e) {
 
 function onKey(e) {
   if (e.key === 'm' || e.key === 'M') { ACTIONS.mute(); return; }
+  if (e.key === '?' || e.key === '/') { e.preventDefault(); ACTIONS.glossary(); return; }
   if (e.key === 'Escape') {
+    if (!document.getElementById('modal').classList.contains('hidden')) { ACTIONS['modal-close'](); return; }
+    if (!document.getElementById('handover').classList.contains('hidden')) return;   // handover needs an explicit choice
     if (Game.state === 'EXPLORE' && Game.focusBody) ACTIONS.defocus();
     if (Game.state === 'MOONVIEW') ACTIONS['back-explore']();
     return;
@@ -438,6 +548,8 @@ function onKey(e) {
   if (e.key === '+' || e.key === '=') { onWheel({ deltaY: -100, preventDefault() {} }); return; }
   if (e.key === '-') { onWheel({ deltaY: 100, preventDefault() {} }); return; }
   if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (!document.getElementById('handover').classList.contains('hidden')) return;   // no hotkeys through a handover
+  if (!document.getElementById('modal').classList.contains('hidden')) return;      // nor the glossary
   const panel = document.getElementById('panel');
   const opts = [...panel.querySelectorAll('.opt')];
   const idx = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, a: 0, b: 1, c: 2, d: 3 }[e.key.toLowerCase()];
@@ -460,6 +572,16 @@ async function boot() {
   window.addEventListener('resize', fit);
   stage.addEventListener('click', onClick);
   stage.addEventListener('mouseover', onHover);
+  // name inputs + role selects (team setup) live inside rebuilt panels
+  document.addEventListener('input', e => {
+    if (e.target.dataset && e.target.dataset.nameInput != null && Team.draft) Team.draft[+e.target.dataset.nameInput].n = e.target.value;
+  });
+  document.addEventListener('change', e => {
+    if (e.target.dataset && e.target.dataset.roleSel != null && Team.draft) {
+      Team.draft[+e.target.dataset.roleSel].role = e.target.value;
+      Sfx.select(); UI.render();
+    }
+  });
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mousedown', onDown);
   window.addEventListener('mouseup', onUp);
@@ -498,6 +620,17 @@ async function boot() {
   document.getElementById('loading').remove();
   Game.go('TITLE');
   requestAnimationFrame(loop);
+  // a mission code in the URL (#m=LUN2-…) preloads a shared design
+  if (location.hash.startsWith('#m=')) {
+    const err = SHARE.applyCode(decodeURIComponent(location.hash.slice(3)));
+    history.replaceState(null, '', location.pathname + location.search);
+    if (err) {
+      UI.toast('MISSION CODE', [{ t: `▼ ${err}`, tone: 'bad' }]);
+    } else {
+      Game.go('DESIGN_REVIEW');
+      UI.toast('MISSION CODE LOADED', [{ t: '▲ Shared design ready · run the design review to fly it', tone: 'good' }]);
+    }
+  }
 }
 
 boot();

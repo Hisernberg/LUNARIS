@@ -466,8 +466,13 @@ const M = {};
 const objective = () => OBJECTIVES[M.objective] || OBJECTIVES.mapping;
 const scenario = () => SCENARIOS[M.scenario] || SCENARIOS.solar;
 const site = () => SITES[M.region] || SITES.south_pole;
-const scienceGoal = () => scenario().goal || RULES.scienceGoal;
-const budgetCap = () => scenario().budget || RULES.startBudget;
+// Difficulty-aware caps (DIFFS/MODE_CFG live in src/modes.js, loaded before this file).
+const baseBudget = () => scenario().budget || RULES.startBudget;
+const budgetCap = () => {
+  if (MODE_CFG.mode === 'sandbox') return 150;
+  return Math.max(50, baseBudget() + diff().budget);
+};
+const scienceGoal = () => Math.max(30, (scenario().goal || RULES.scienceGoal) + diff().goal);
 
 // Per-scan bonus: objective affinity + site bonus + condition bonus.
 function instrBonus(i) {
@@ -479,8 +484,8 @@ function instrBonus(i) {
 // Science multiplier from the site's objective affinity.
 function objMult() { return site().obj[M.objective] || 1; }
 
-// Risk increases are amplified by the Solar Maximum condition.
-const rk = v => (v > 0 ? Math.round(v * (scenario().riskMult || 1)) : v);
+// Risk increases are amplified by the Solar Maximum condition and the difficulty.
+const rk = v => (v > 0 ? Math.round(v * (scenario().riskMult || 1) * diff().riskMult) : v);
 const rkFx = fx => { const o = Object.assign({}, fx); if (o.risk) o.risk = rk(o.risk); return o; };
 
 function pickScenario(avoid) {
@@ -658,6 +663,7 @@ function resetMission(scenarioId) {
     missionStatus: null, reasons: [], objectives: [],
     collectedScience: 0, transmittedFraction: 1, scanAdjust: 0, storageLost: 0,
     hazards: [],
+    timeline: [],
     travelMode: null, travel: null, flightPhase: null,
     moonDistance: Math.round(EARTH_MOON.perigee + Math.random() * (EARTH_MOON.apogee - EARTH_MOON.perigee)),
     failure: null, flags: {}, log: [],
@@ -699,6 +705,8 @@ function applyFx(stage, title, fx, detail) {
   if (fx.science) M.science = Math.max(0, M.science + fx.science);
   if (fx.risk) M.risk = Math.max(0, M.risk + fx.risk);
   if (fx.data) { M.dataGenerated = Math.max(0, M.dataGenerated + fx.data); }
+  // resource timeline for the debrief chart (transfer burns, scans, events, downlink)
+  M.timeline.push({ stage, p: M.power, f: M.fuel, s: M.science, r: M.risk, d: M.dataStored });
   addLog(stage, title, chips, detail);
   return chips.concat(checkThresholds(stage));
 }
@@ -822,9 +830,12 @@ function hazardOptions(id, slot) {
 }
 
 function resolveHazard(id, optId, slot, roll = Math.random()) {
-  const h = HAZARDS[id], o = hazardOptions(id, slot).find(x => x.id === optId);
+  const h = HAZARDS[id];
+  const opts = hazardOptions(id, slot);
+  const o = opts.find(x => x.id === optId) || opts[0];   // unknown id (stale choice): fall back safely
   let fx = o.fx, outcome = null;
   if (o.chance != null) {
+    roll += diff().luck;            // cadets are luckier, veterans less so
     const lucky = roll < o.chance;
     fx = lucky ? o.fx : o.bad;
     outcome = lucky ? 'lucky' : 'unlucky';
@@ -1024,9 +1035,12 @@ const HISTORY = {
 
 function recordRun() {
   if (!M.region || !M.objective) return;   // only record completed missions
+  const score = computeScore();
   HISTORY.save({
     date: new Date().toISOString().slice(0, 10),
     status: M.missionStatus,
+    score: score.total, grade: score.grade,
+    mode: score.mode, diff: score.diff,
     science: M.science, goal: scienceGoal(),
     power: M.power, fuel: M.fuel,
     budget: M.budgetUsed, risk: M.risk,

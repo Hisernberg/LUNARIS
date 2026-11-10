@@ -56,7 +56,7 @@ const UI = (() => {
 
   function option(o) {
     return `<button class="opt ${o.selected ? 'selected' : ''} ${o.kit ? 'kitopt' : ''}" data-act="${o.act || 'choose'}" data-id="${o.id}" ${o.group ? `data-group="${o.group}"` : ''} aria-pressed="${!!o.selected}" ${o.disabled ? 'disabled' : ''}>
-      <span class="opt-top">${o.key ? `<span class="opt-key">${o.key}</span>` : ''}<span class="opt-name">${o.name}</span>${o.badge ? `<span class="opt-badge">${o.badge}</span>` : ''}${o.selected ? '<span class="opt-sel">SELECTED</span>' : ''}</span>
+      <span class="opt-top">${o.key ? `<span class="opt-key">${o.key}</span>` : ''}<span class="opt-name">${o.name}</span>${o.badge ? `<span class="opt-badge">${o.badge}</span>` : ''}${o.hint ? '<span class="opt-badge hint">✦ CADET TIP</span>' : ''}${o.selected ? '<span class="opt-sel">SELECTED</span>' : ''}</span>
       ${o.desc ? `<span class="opt-desc">${o.desc}</span>` : ''}
       ${o.chips ? chips(o.chips) : ''}
       ${o.warn ? `<span class="opt-warn">⚠ ${o.warn}</span>` : ''}
@@ -174,6 +174,8 @@ const UI = (() => {
 
   P.TITLE = () => {
     const n = NasaData.count();
+    const board = BOARD.top(3);
+    const snap = SAVE.peek();
     return {
       cls: 'title', html: `
       <div class="title-block">
@@ -181,13 +183,85 @@ const UI = (() => {
         <h1>LUNARIS</h1>
         <div class="title-sub">DESIGN BEYOND EARTH</div>
         <p class="tagline">Explore the solar system. Choose the mission. Engineer the spacecraft. Discover the consequences.<br>
-        A continuous engineering story - not a collection of menus.</p>
-        <div class="actions" style="justify-content:center">
+        A continuous engineering story - solo, in a team of up to four, or against a friend's design.</p>
+        <div class="title-actions">
           ${btn('EXPLORE THE SOLAR SYSTEM', 'explore', { cls: 'go', primary: true })}
+          ${btn('FLY A QUICK MISSION', 'start')}
+          ${snap ? btn('RESUME LAST MISSION', 'resume', { cls: 'ghost' }) : btn('MORE WAYS TO PLAY', 'modes', { cls: 'ghost' })}
         </div>
-        ${btn('SKIP EXPLORATION · START MISSION', 'start')}
-        <p class="fine">${n ? `${Object.keys(NasaData.DATASETS).length} NASA-sourced datasets loaded · ${n} values (${NasaData.origin === 'csv' ? 'local CSV' : 'embedded copy of local CSV'})` : '⚠ datasets could not be loaded'} · Sound optional (M)</p>
+        ${snap ? btn('MORE WAYS TO PLAY · TEAM · SANDBOX · CODES', 'modes') : ''}
+        ${board.length ? `<div class="hof-mini"><span class="th-l">HALL OF FAME</span>${board.map((b, i) =>
+          `<span class="hof-row"><b>#${i + 1}</b> ${esc(b.n)} · <b class="${statusCls(b.st)}">${b.s}</b> <small>${esc(b.g)} · ${esc(b.diff)}</small></span>`).join('')}</div>` : ''}
+        <p class="fine">${n ? `${Object.keys(NasaData.DATASETS).length} NASA-sourced datasets loaded · ${n} values (${NasaData.origin === 'csv' ? 'local CSV' : 'embedded copy of local CSV'})` : '⚠ datasets could not be loaded'} · Sound optional (M) · Glossary (?)</p>
       </div>` };
+  };
+
+  // ---- MODE SELECT: solo / team / sandbox / challenge codes
+  P.MODE = () => {
+    const diffs = Object.values(DIFFS).map(d => `
+      <button class="diffcard ${Game.diffPick === d.id ? 'selected' : ''}" data-act="set-diff" data-diff="${d.id}" aria-pressed="${Game.diffPick === d.id}">
+        <span class="dc-name"><span>${d.name} <i>×${d.mult} score</i></span>${Game.diffPick === d.id ? '<span class="opt-sel">SELECTED</span>' : ''}</span>
+        <span class="dc-stat">${d.blurb}</span>
+        <span class="dc-mods">budget ${d.budget >= 0 ? '+' : MINUS}$${Math.abs(d.budget)}M · goal ${d.goal >= 0 ? '+' : MINUS}${Math.abs(d.goal)} science · risk ×${d.riskMult}</span>
+      </button>`).join('');
+    const board = BOARD.top(5);
+    return {
+      cls: 'right', html: `
+      ${header('MISSION CONTROL', 'Choose How to Play', 'Same mission loop, different pressures. Difficulty sets the budget, the science bar and how kind the odds are.')}
+      <div class="lbl">DIFFICULTY · APPLIES TO EVERY MODE</div>
+      <div class="opts compact">${diffs}</div>
+      <div class="modes-grid">
+        <div class="modecard">
+          <b>◈ SOLO CAREER</b>
+          <span>Full mission, one director. Score, grade and Hall of Fame.</span>
+          ${btn('START SOLO MISSION', 'mode-start', { cls: 'go' })}
+        </div>
+        <div class="modecard">
+          <b>◇ TEAM MISSION · 2-4</b>
+          <span>Pass one console around: Director, Engineer, Science and Ops each own their calls. Hot-seat co-op.</span>
+          ${btn('BUILD THE TEAM', 'mode-team')}
+        </div>
+        <div class="modecard">
+          <b>◌ SANDBOX</b>
+          <span>$150M, pick your own condition, generous margins. Experiment freely; scores marked casual.</span>
+          ${btn('ENTER SANDBOX', 'mode-sandbox')}
+        </div>
+      </div>
+      <div class="lbl">CHALLENGE A FRIEND · SAVE / SHARE / COMPARE DESIGNS</div>
+      <p class="note">A mission code packs a complete design - difficulty, condition, objective, site, every subsystem - into one link. Send it to a friend and see who flies it better.</p>
+      <div class="codeline"><input id="code-input" type="text" placeholder="paste LUN2-… code or full link" spellcheck="false"><button class="btn" data-act="code-load">LOAD</button></div>
+      ${board.length ? `
+      <div class="lbl">HALL OF FAME · TOP ${board.length} <button class="link" data-act="board-clear">clear</button></div>
+      <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>DIFF</th><th>CONDITION</th><th>DATE</th></tr>
+      ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${esc(b.diff || '')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>` : ''}
+      ${btn('BACK TO TITLE', 'title', { cls: 'ghost' })}` };
+  };
+
+  // ---- TEAM SETUP: 2-4 players, unique roles, editable names
+  P.TEAMSETUP = () => {
+    const allRoles = Object.keys(ROLE_META);
+    const rows = Team.draft.map((p, i) => {
+      const others = Team.draft.filter((_, j) => j !== i).map(q => q.role);
+      const free = allRoles.filter(r => !others.includes(r) || r === p.role);
+      return `<div class="teamrow">
+        <span class="tr-i">P${i + 1}</span>
+        <input type="text" value="${esc(p.n)}" maxlength="12" spellcheck="false" data-name-input="${i}" aria-label="Player ${i + 1} name">
+        <select data-role-sel="${i}" aria-label="Role for player ${i + 1}">${free.map(r =>
+          `<option value="${r}" ${p.role === r ? 'selected' : ''}>${ROLE_META[r].icon} ${ROLE_META[r].title}</option>`).join('')}</select>
+        ${Team.draft.length > 2 ? `<button class="tr-del" data-act="team-del" data-i="${i}" title="Remove player">✕</button>` : '<span class="tr-del"></span>'}
+      </div>`;
+    }).join('');
+    const ownerLines = Object.entries(OWNERS).filter(([st]) => st !== 'hazard').map(([st, r]) => `${st} → ${ROLE_META[r].short}`).join(' · ');
+    return {
+      cls: 'right', html: `
+      ${header('MISSION CONTROL · TEAM', 'Assemble the Flight Crew', '2-4 players share one console (hot-seat). Each role owns its decisions; the others argue, the owner commits.')}
+      ${rows}
+      ${Team.draft.length < 4 ? `<button class="link" data-act="team-add">+ add player</button>` : ''}
+      <div class="lbl">WHO DECIDES WHAT</div>
+      <ul class="rolegrid">${Object.values(ROLE_META).map(r => `<li><b>${r.icon} ${r.title}</b><span>${r.duties[0]}</span></li>`).join('')}</ul>
+      <p class="note" title="${esc(ownerLines)}">Screens hand over automatically: the owner takes the console before committing. Hazard responses belong to Operations.</p>
+      ${btn('LAUNCH THE CREW · START MISSION', 'team-start', { cls: 'go', primary: true })}
+      ${btn('BACK', 'modes', { cls: 'ghost' })}` };
   };
 
   // ---- explore: body info card
@@ -244,19 +318,35 @@ const UI = (() => {
       ${btn('BACK TO SOLAR SYSTEM', 'back-explore', { cls: 'ghost' })}` };
   };
 
-  P.BRIEFING = () => ({
-    cls: 'right', html: `
-    ${header('MISSION BRIEFING', 'You are the Mission Director', 'Pick a science objective and a survey site, engineer LUNARIS-01, survive the flight, and bring the data home. You never fly the spacecraft - you make the calls.')}
-    ${conditionCard()}
-    <div class="lbl">OBJECTIVES · ALL THREE FOR FULL SUCCESS</div>
-    ${objectiveList()}
-    <div class="kvs">
-      <div class="kv"><span>Budget cap</span><b>$${budgetCap()}M</b></div>
-      <div class="kv"><span>In-flight hazards</span><b>2 random · odds shown before launch</b></div>
-      <div class="kv"><span>Risk</span><b>≥ ${RULES.riskHigh} data loss · ≥ ${RULES.riskCritical} mission lost</b></div>
-    </div>
-    <p class="note">▲ benefit · ▼ cost. Every option shows both before you commit. Budget, power, fuel and risk figures are a simplified game model.</p>
-    ${btn('CHOOSE THE SCIENCE OBJECTIVE', 'to-objective', { cls: 'go', primary: true })}` });
+  P.BRIEFING = () => {
+    const mode = MODE_CFG.mode;
+    const who = mode === 'team'
+      ? `Flight crew: ${Team.list.map(p => `P${p.i + 1} ${ROLE_META[p.role].short}`).join(' · ')}. Screens hand over automatically - each role owns its calls.`
+      : mode === 'sandbox' ? 'Sandbox: $150M, your choice of condition, generous margins. Break things safely and learn.'
+      : `Difficulty: ${diff().name}. ${diff().blurb}`;
+    const kicker = mode === 'team' ? 'MISSION BRIEFING · TEAM MISSION' : mode === 'sandbox' ? 'MISSION BRIEFING · SANDBOX' : 'MISSION BRIEFING';
+    const condBlock = mode === 'sandbox' ? `
+      <div class="lbl">PICK YOUR CONDITION · SANDBOX FREEDOM</div>
+      <div class="opts compact">${Object.values(SCENARIOS).map((sc, k) => option({
+        id: sc.id, key: k + 1, name: `${sc.icon} ${sc.name}`, desc: sc.brief, chips: sc.effects.map(e => ({ t: e, tone: 'neutral' })),
+        selected: M.scenario === sc.id,
+      })).join('')}</div>` : conditionCard();
+    return {
+      cls: 'right', html: `
+      ${header(kicker, 'You are the Mission Director', who)}
+      ${condBlock}
+      <div class="lbl">OBJECTIVES · ALL THREE FOR FULL SUCCESS</div>
+      ${objectiveList()}
+      <div class="kvs">
+        <div class="kv"><span>Budget cap</span><b>$${budgetCap()}M</b></div>
+        <div class="kv"><span>Science goal</span><b>${scienceGoal()}</b></div>
+        <div class="kv"><span>In-flight hazards</span><b>2 random · odds shown before launch</b></div>
+        <div class="kv"><span>Risk</span><b>≥ ${RULES.riskHigh} data loss · ≥ ${RULES.riskCritical} lost</b></div>
+      </div>
+      <p class="note">▲ benefit · ▼ cost. Every option shows both before you commit. Budget, power, fuel and risk figures are a simplified game model.</p>
+      ${btn('CHOOSE THE SCIENCE OBJECTIVE', 'to-objective', { cls: 'go', primary: true })}
+      <div class="actions">${btn('HOW TO PLAY · GLOSSARY', 'glossary', { cls: 'ghost' })}${btn('CHANGE MODE', 'modes', { cls: 'ghost' })}</div>` };
+  };
 
   P.OBJECTIVE = () => {
     const opts = Object.values(OBJECTIVES).map((o, k) => {
@@ -312,8 +402,10 @@ const UI = (() => {
   };
 
   function designCard(group, o, selected, stat, badge) {
+    const hint = hintFor(group) === o.id;
+    const owner = Team.enabled() && GROUP_OWNER[group] ? `<span class="dc-owner" title="Owning role: ${ROLE_META[GROUP_OWNER[group]].title}">${ROLE_META[GROUP_OWNER[group]].icon} ${ROLE_META[GROUP_OWNER[group]].short}</span>` : '';
     return `<button class="dcard ${selected ? 'selected' : ''}" data-act="pick" data-group="${group}" data-id="${o.id}" aria-pressed="${selected}">
-      <span class="dc-name"><span>${o.name}${selected ? ' <i>✓</i>' : ''}</span>${badge || ''}</span>
+      <span class="dc-name"><span>${o.name}${selected ? ' <i>✓</i>' : ''}</span>${hint ? '<span class="dc-tgt hint">✦ CADET TIP</span>' : ''}${badge || ''}${owner}</span>
       <span class="dc-stat">${stat}</span>
       <span class="dc-gain">▲ ${o.gain}</span>
       ${o.loss ? `<span class="dc-loss">▼ ${o.loss}</span>` : ''}
@@ -362,7 +454,9 @@ const UI = (() => {
     ].join('');
     return {
       cls: 'wide', html: `
-      ${header(`ENGINEER · ${obj.name.toUpperCase()} AT ${reg.short} <button class="link" data-act="to-objective">change objective</button> <button class="link" data-act="to-target">change site</button>`, 'Origami Spacecraft Engineering', 'Each subsystem unfolds on the craft as you choose it. Every advantage has a cost - shown before you commit.')}
+      ${header(`ENGINEER · ${obj.name.toUpperCase()} AT ${reg.short} <button class="link" data-act="to-objective">change objective</button> <button class="link" data-act="to-target">change site</button>`, 'Origami Spacecraft Engineering', Team.enabled()
+        ? 'Each subsystem unfolds on the craft as you choose it. Tags mark the owning role - anyone may click, the owner commits.'
+        : 'Each subsystem unfolds on the craft as you choose it. Every advantage has a cost - shown before you commit.')}
       ${sections}
       ${threatStrip()}
       <div class="tiles">${tiles}</div>
@@ -381,6 +475,8 @@ const UI = (() => {
       ${header('ENGINEER · VALIDATION', 'Design Review', rv.ok ? 'All critical constraints satisfied. Objective fit shown for information.' : 'Launch blocked: one or more critical constraints violated.')}
       <div class="checks">${rows}</div>
       <div class="verdict ${rv.ok ? 'ok' : 'bad'}">${rv.ok ? 'GO FOR LAUNCH' : 'NO-GO · RETURN TO DESIGN'}</div>
+      ${rv.ok ? `<p class="note">Save or share this design: a mission code packs difficulty, condition, objective, site and every subsystem into one link.</p>
+      <div class="actions">${btn('COPY MISSION CODE · CHALLENGE A FRIEND', 'copy-share', { cls: 'ghost' })}</div>` : ''}
       ${rv.ok ? threatStrip() : ''}
       <div class="actions">
         ${rv.ok ? btn('PLAN TRAVEL STRATEGY', 'to-trajectory', { cls: 'go', primary: true }) : ''}
@@ -703,14 +799,38 @@ const UI = (() => {
   const STATUS_ICON = { SUCCESS: '✓', 'PARTIAL SUCCESS': '◐', FAILURE: '✗' };
   const statusCls = s => (s === 'SUCCESS' ? 'ok' : s === 'FAILURE' ? 'bad' : 'mid');
 
-  P.RESULT = () => ({
-    cls: 'right', html: `
+  function scoreBlock(sc) {
+    return `
+    <div class="lbl">MISSION SCORE · TRANSPARENT BY DESIGN</div>
+    <div class="scorewrap">
+      <div class="scoretable">${sc.rows.map(r => `
+        <div class="srow"><span class="s-k">${r.k}</span><span class="s-v">${esc(r.v)}</span>
+          <div class="s-bar"><i style="width:${Math.max(0, Math.min(100, Math.max(0, r.p) / r.max * 100))}%"></i></div>
+          <b class="${r.p < 0 ? 'bad' : ''}">${Math.round(r.p * 10) / 10}</b></div>`).join('')}</div>
+      <div class="scoretotal">
+        <div class="grade g${sc.grade}">${sc.grade}</div>
+        <b>${sc.total}</b><span>POINTS</span>
+        <small>${sc.diff} difficulty${sc.team ? ` · crew of ${sc.team}` : ''}${sc.mode === 'sandbox' ? ' · casual (sandbox)' : ''}</small>
+        <small>base ${sc.base} × ${sc.mult}</small>
+      </div>
+    </div>`;
+  }
+
+  P.RESULT = () => {
+    const sc = M.score || computeScore();
+    const registered = M.scoreRegistered;
+    return {
+      cls: 'right', html: `
     ${header('EXPLAIN · MISSION RESULT', `<span class="status ${statusCls(M.missionStatus)}">${STATUS_ICON[M.missionStatus]} ${M.missionStatus}</span>`)}
     <div class="bigsci ${statusCls(M.missionStatus)}"><b>${M.science}</b><span>science returned from ${site().short.toLowerCase()}<br>goal ${scienceGoal()}${M.transmittedFraction < 1 ? ` · only ${Math.round(M.transmittedFraction * 100)}% of the downlink completed` : ''}</span></div>
+    ${scoreBlock(sc)}
+    ${registered ? '<div class="verdict ok">SCORE REGISTERED · HALL OF FAME</div>' : `
+    <div class="codeline"><input id="score-name" type="text" maxlength="18" placeholder="${Team.enabled() ? 'crew name for the Hall of Fame' : 'your name for the Hall of Fame'}" spellcheck="false"><button class="btn" data-act="register-score">REGISTER</button></div>`}
     <div class="lbl">OBJECTIVES · ${scenario().name.toUpperCase()}</div>
     ${objectiveList(M.objectives)}
     <ul class="reasons">${M.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
-    ${btn('OPEN VISUAL DEBRIEF REPORT', 'to-report', { cls: 'go', primary: true })}` });
+    <div class="actions">${btn('OPEN VISUAL DEBRIEF REPORT', 'to-report', { cls: 'go', primary: true })}${btn('COPY CHALLENGE LINK', 'copy-share', { cls: 'ghost' })}</div>` };
+  };
 
   // ---- EXPLAIN: decision impact chains
   function decisionChains() {
@@ -747,18 +867,56 @@ const UI = (() => {
   function historyTable() {
     const hist = HISTORY.load();
     if (hist.length < 2) return '';
-    const rows = hist.map(h => `<tr><td>${esc(h.date)}</td><td class="${statusCls(h.status)}">${STATUS_ICON[h.status] || '—'} ${esc(h.status || '')}</td><td><b>${h.science}</b>/${h.goal}</td><td>${esc(h.objective || '')}</td><td>${esc(h.region || '')}</td><td>${esc(h.instrument || '')}</td><td>${esc(h.condition || '')}</td><td>${esc(h.travel || '')}</td><td>$${h.budget}M</td></tr>`).join('');
+    const rows = hist.map(h => `<tr><td>${esc(h.date)}</td><td class="${statusCls(h.status)}">${STATUS_ICON[h.status] || '—'} ${esc(h.status || '')}</td><td><b>${h.score != null ? h.score : '—'}</b>${h.grade ? ` ${esc(h.grade)}` : ''}</td><td><b>${h.science}</b>/${h.goal}</td><td>${esc(h.objective || '')}</td><td>${esc(h.region || '')}</td><td>${esc(h.instrument || '')}</td><td>${esc(h.condition || '')}</td><td>${esc(h.travel || '')}</td><td>${esc(h.diff || 'ENGINEER')}</td><td>$${h.budget}M</td></tr>`).join('');
     return `
       <div class="lbl">LEARN · YOUR LAST ${hist.length} MISSIONS · COMPARE DESIGNS</div>
       <table class="hist">
-        <tr><th>DATE</th><th>RESULT</th><th>SCIENCE</th><th>OBJECTIVE</th><th>SITE</th><th>INSTRUMENT</th><th>CONDITION</th><th>TRAVEL</th><th>COST</th></tr>
+        <tr><th>DATE</th><th>RESULT</th><th>SCORE</th><th>SCIENCE</th><th>OBJECTIVE</th><th>SITE</th><th>INSTRUMENT</th><th>CONDITION</th><th>TRAVEL</th><th>DIFF</th><th>COST</th></tr>
         ${rows}
       </table>
       <p class="note">Every run changes the condition and the hazards. Which design matched which condition? What would you keep, what would you swap?</p>`;
   }
 
+  // ---- resource timeline (SVG chart over mission events)
+  function timelineSvg() {
+    const T = M.timeline || [];
+    if (T.length < 2) return '<p class="note">No in-flight resource changes recorded.</p>';
+    const w = 660, h = 150, pad = 26;
+    const x = i => pad + (i / (T.length - 1)) * (w - pad * 2);
+    const y = v => h - pad - Math.max(0, Math.min(100, v)) / 100 * (h - pad * 2);
+    const series = [['p', 'POWER', 'var(--cyan)'], ['f', 'FUEL', 'var(--amber)'], ['s', 'SCIENCE', 'var(--green)'], ['r', 'RISK', 'var(--red)']];
+    const lines = series.map(([k, , col]) =>
+      `<polyline points="${T.map((pt, i) => `${x(i).toFixed(1)},${y(pt[k]).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" opacity="0.9"/>`).join('');
+    const stages = [];
+    T.forEach((pt, i) => { if (!stages.length || stages[stages.length - 1].s !== pt.stage) stages.push({ s: pt.stage, i }); });
+    const ticks = stages.map((st, k) =>
+      `<line x1="${x(st.i).toFixed(1)}" y1="${h - pad + 3}" x2="${x(st.i).toFixed(1)}" y2="${h - pad + 7}" stroke="rgba(150,170,190,0.5)"/>
+       <text x="${x(st.i).toFixed(1)}" y="${h - pad + 16}" font-size="7.5" fill="rgba(150,170,190,0.8)" text-anchor="${k === 0 ? 'start' : 'middle'}">${esc(st.s.toUpperCase().slice(0, 12))}</text>`).join('');
+    return `
+    <div class="tlchart">
+      <svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Resource timeline">
+        <line x1="${pad}" y1="${h - pad}" x2="${w - pad}" y2="${h - pad}" stroke="rgba(150,170,190,0.35)"/>
+        <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h - pad}" stroke="rgba(150,170,190,0.35)"/>
+        <text x="${pad - 6}" y="${y(100) + 3}" font-size="7.5" fill="rgba(150,170,190,0.8)" text-anchor="end">100%</text>
+        <text x="${pad - 6}" y="${y(0) + 3}" font-size="7.5" fill="rgba(150,170,190,0.8)" text-anchor="end">0</text>
+        ${lines}${ticks}
+      </svg>
+      <div class="tl-legend">${series.map(([k, l, col]) => `<span><i style="background:${col}"></i>${l}</span>`).join('')}</div>
+      <p class="note">Every fuel burn, scan, heater load and downlink, in mission order - see which decisions moved which line.</p>
+    </div>`;
+  }
+
+  function boardTable(limit = 8) {
+    const board = BOARD.top(limit);
+    if (!board.length) return `<p class="note">Hall of Fame is empty - register your score on the result screen, then compare designs with a friend via a challenge link.</p>`;
+    return `
+    <table class="hist"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>RESULT</th><th>SCIENCE</th><th>DIFF</th><th>MODE</th><th>CONDITION</th><th>SITE</th><th>DATE</th></tr>
+    ${board.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.n)}</td><td><b>${b.s}</b></td><td class="${statusCls(b.st)}">${b.g}</td><td class="${statusCls(b.st)}">${esc(b.st || '')}</td><td>${b.sci}/${b.goal || '?'}</td><td>${esc(b.diff || '')}</td><td>${esc(b.mode || '')}</td><td>${esc(b.cond || '')}</td><td>${esc(b.reg || '')}</td><td>${esc(b.date || '')}</td></tr>`).join('')}</table>`;
+  }
+
   P.REPORT = () => {
     const st = M.missionStatus, strat = strategyLabel();
+    const sc = M.score || computeScore();
     const txLine = M.selectedTransmission
       ? `${commLabel(M.communication)} link · ${M.selectedTransmission === 'full' ? 'full resolution' : 'compressed'} · ${Math.round(M.transmittedFraction * 100)}% delivered`
       : 'No transmission';
@@ -782,11 +940,17 @@ const UI = (() => {
       <div class="tiles four">${tiles}</div>
       <div class="lbl">OBJECTIVES</div>
       ${objectiveList(M.objectives)}
+      ${scoreBlock(sc)}
+      <div class="lbl">RESOURCE TIMELINE · POWER / FUEL / SCIENCE / RISK</div>
+      ${timelineSvg()}
       <div class="lbl">DATA FLOW · GENERATED → STORED → RETURNED</div>
       ${dataChart()}
       <div class="lbl">YOUR KEY DECISIONS → CONSEQUENCES</div>
       <div class="decs">${decisionChains()}</div>
       ${historyTable()}
+      <div class="lbl">HALL OF FAME · LOCAL RANKINGS <button class="link" data-act="board-clear">clear</button></div>
+      ${boardTable()}
+      <div class="actions">${btn('COPY CHALLENGE LINK · SEND THIS DESIGN', 'copy-share', { cls: 'ghost' })}</div>
       <p class="note">Every new mission draws a new random condition and new hazards. Tip: ${strat.next} &nbsp;·&nbsp; Budget, power, fuel, science and risk are a <b>simplified game model</b>. Lunar values come from the ${Object.keys(NasaData.DATASETS).length} NASA-sourced datasets (sources shown in-game).</p>` };
   };
 
@@ -803,11 +967,77 @@ const UI = (() => {
     panel.className = `panel ${res.cls}`;
     panel.innerHTML = res.html;
     const key = Game.state + '|' + Game.phase;
-    if (key !== lastKey) { panel.scrollTop = 0; lastKey = key; }
+    if (key !== lastKey) {
+      panel.scrollTop = 0;
+      panel.classList.remove('enter'); void panel.offsetWidth; panel.classList.add('enter');
+      const tip = TIPS[Game.state];
+      if (tip && !SEEN.has(Game.state)) {
+        const el = document.createElement('div');
+        el.className = 'tipstrip';
+        el.innerHTML = `<span class="t-k">TIP</span><span>${esc(tip)}</span><button class="t-x" data-act="tip-dismiss" title="Got it · won't show again">✕</button>`;
+        panel.appendChild(el);
+        SEEN.mark(Game.state);
+      }
+      lastKey = key;
+    }
     const again = focusKey && panel.querySelector(focusKey);
     if (again) again.focus({ preventScroll: true });
     tracker();
     hud();
+  }
+
+  // ------------------------------------------------------------ overlays: handover + glossary
+  function showHandover(member, run, suggest) {
+    const r = ROLE_META[member.role];
+    const el = $('handover');
+    const st = Game.state;
+    const stageName = (STAGE_INFO[st] && typeof STAGE_INFO[st] !== 'function' ? STAGE_INFO[st][1] : st).toLowerCase();
+    el.innerHTML = `
+      <div class="handover-card">
+        <div class="kicker">${suggest ? 'HANDOVER · PASS THE CONSOLE' : 'ROLE LOCK · OWNER REQUIRED'}</div>
+        <div class="ho-role">${r.icon}</div>
+        <h2>${r.title}</h2>
+        <div class="ho-name">${esc(member.n)} · PLAYER ${member.i + 1}</div>
+        <p class="sub">${suggest ? `This screen's decisions belong to the ${r.title.toLowerCase()}. ${r.duties[0]}.` : `The ${r.title.toLowerCase()} (${esc(member.n)}) must make this call. Discuss first, commit together.`}</p>
+        <ul class="ho-duties">${r.duties.map(d => `<li>${esc(d)}</li>`).join('')}</ul>
+        <button class="btn go big" data-act="handover-ready">I'M ${esc(member.n.toUpperCase())} · TAKE THE CONSOLE</button>
+        ${suggest ? `<button class="btn ghost" data-act="handover-skip">JUST LOOKING · STAY AT CONSOLE</button>` : `<p class="fine">Your click is kept: taking the console will execute it.</p>`}
+      </div>`;
+    el.classList.remove('hidden');
+    const b = el.querySelector('button[data-act="handover-ready"]');
+    if (b) b.focus({ preventScroll: true });
+  }
+  function hideHandover() { const el = $('handover'); el.classList.add('hidden'); el.innerHTML = ''; }
+
+  function showGlossary() {
+    const el = $('modal');
+    el.innerHTML = `
+      <div class="modal-card">
+        <div class="rep-head"><div class="kicker">LEARN · MISSION GLOSSARY</div><button class="btn ghost" data-act="modal-close">CLOSE ✕</button></div>
+        <p class="note">Every concept the game uses, in plain words. Terms also appear in context: insight boxes show NASA DATA → MEANING → GAME EFFECT.</p>
+        <div class="glos">${GLOSSARY.map(([t, d]) => `<div class="gterm"><b>${esc(t)}</b><span>${esc(d)}</span></div>`).join('')}</div>
+        <p class="fine">Press ESC or ? to close. Difficulty, condition and site text also teach the concept they affect.</p>
+      </div>`;
+    el.classList.remove('hidden');
+  }
+  function hideModal() { const el = $('modal'); el.classList.add('hidden'); el.innerHTML = ''; }
+
+  function copyText(txt, label) {
+    const done = () => toast(label, [{ t: '▲ Copied to clipboard · paste it in a chat to challenge someone', tone: 'good' }]);
+    const fail = () => toast(label, [{ t: '▼ Clipboard blocked - copy the URL bar instead (code included)', tone: 'bad' }]);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done, () => legacy());
+    } else legacy();
+    function legacy() {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? done() : fail();
+      } catch (e) { fail(); }
+    }
   }
 
   const TRACK = ['CHOOSE', 'ENGINEER', 'LAUNCH', 'TRANSFER', 'OPERATE', 'RETURN', 'EXPLAIN'];
@@ -830,7 +1060,8 @@ const UI = (() => {
     const [idx, label] = info;
     const tgt = M.region ? `<div class="cond-badge tgt">◎ ${SITES[M.region].short}</div>` : '';
     const obj = M.objective ? `<div class="cond-badge tgt">⚗ ${OBJECTIVES[M.objective].name.toUpperCase()}</div>` : '';
-    $('tracker').innerHTML = `<ol>${TRACK.map((s, k) => `<li class="${k < idx ? 'done' : k === idx ? 'now' : ''}"><i></i>${s}</li>`).join('')}</ol>${obj}${tgt}<div class="cond-badge" title="${scenario().effects.join(' · ')}">${scenario().icon} ${scenario().name.toUpperCase()}</div><div class="stage-label">${label}</div>`;
+    const owner = Team.enabled() ? `<div class="cond-badge owner" title="The role currently owning this screen's decisions">${Team.label()}</div>` : '';
+    $('tracker').innerHTML = `<ol>${TRACK.map((s, k) => `<li class="${k < idx ? 'done' : k === idx ? 'now' : ''}"><i></i>${s}</li>`).join('')}</ol>${obj}${tgt}<div class="cond-badge" title="${scenario().effects.join(' · ')}">${scenario().icon} ${scenario().name.toUpperCase()}</div>${owner}<button class="link glos" data-act="glossary" title="Mission glossary (press ?)">? GLOSSARY</button><div class="stage-label">${label}</div>`;
   }
 
   const prev = {};
@@ -885,5 +1116,6 @@ const UI = (() => {
 
   function hideToast() { $('toast').classList.remove('show'); }
 
-  return { render, hud, toast, hideToast, setMuteLabel, tickFact, POLL_COUNT };
+  return { render, hud, toast, hideToast, setMuteLabel, tickFact, POLL_COUNT,
+           showHandover, hideHandover, showGlossary, hideModal, copyText };
 })();

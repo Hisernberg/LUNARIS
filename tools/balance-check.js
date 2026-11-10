@@ -29,6 +29,8 @@ function load(file) {
 
 // MathX first (state.js uses MathX in helper defaults at load time only via calls).
 load('src/mathx.js');
+// modes.js first: state.js's budget/goal/risk hooks read MODE_CFG and diff().
+load('src/modes.js');
 // data.js: fetch not available - inject the embedded dataset map instead.
 const emb = {};
 for (const f of fs.readdirSync(path.join(ROOT, 'data')).filter(f => f.endsWith('.csv')).sort()) {
