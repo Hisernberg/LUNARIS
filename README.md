@@ -39,6 +39,11 @@ and receives a **visual scientific debrief** explaining why the mission succeede
 
 **Every interaction answers three questions visually: what changed? why did it change? what does it affect next?**
 
+## Play it right now
+
+**▶ https://hisernberg.github.io/LUNARIS/** — the game is deployed live on GitHub Pages
+(all 15 datasets load over https; the same build also works offline — see below).
+
 ## Play it in 30 seconds
 
 No installation, no build step, no internet connection needed.
