@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LUNARIS: Design Beyond Earth</title>
+  <meta name="description" content="Explore the solar system, choose the mission, engineer the spacecraft, discover the consequences. NASA Space Apps Challenge 2026.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game" width="1280" height="720" aria-label="Mission visual display (procedurally drawn scene)"></canvas>
+
+    <header id="hud" class="hidden" aria-label="Mission resources">
+      <div class="brand">LUNARIS <span>DESIGN BEYOND EARTH</span></div>
+      <div class="meters">
+        <div class="meter" id="m-power"><label>POWER</label><div class="bar"><i></i></div><b>—</b></div>
+        <div class="meter" id="m-fuel"><label>FUEL</label><div class="bar"><i></i></div><b>—</b></div>
+        <div class="meter" id="m-budget"><label>BUDGET</label><div class="bar"><i></i></div><b>—</b></div>
+        <div class="meter" id="m-data"><label>DATA</label><div class="bar"><i></i></div><b>—</b></div>
+        <div class="meter" id="m-science"><label>SCIENCE</label><div class="bar goal"><i></i></div><b>—</b></div>
+      </div>
+      <div id="risk" class="risk">RISK <b>LOW</b></div>
+    </header>
+    <nav id="tracker" class="hidden" aria-label="Mission progress"></nav>
+
+    <button id="mute" class="mute" data-act="mute" aria-pressed="true" title="Toggle sound (M)">AUDIO ON</button>
+
+    <section id="panel" class="panel hidden" aria-live="polite"></section>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="loading">INITIALISING LUNARIS…</div>
+  </div>
+
+  <noscript><p style="color:#fff;padding:20px">LUNARIS needs JavaScript enabled.</p></noscript>
+
+  <!-- Embedded copy of the CSVs: fallback for file:// where fetch() is blocked (regenerate with node tools/embed-csv.js). -->
+  <script src="data/embedded.js"></script>
+  <script src="src/data.js"></script>
+  <script src="src/mathx.js"></script>
+  <script src="src/astro.js"></script>
+  <script src="src/state.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/render_core.js"></script>
+  <script src="src/render_scenes.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

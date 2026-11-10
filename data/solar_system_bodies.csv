@@ -1,0 +1,120 @@
+category,parameter,value,unit,game_note,source_name,source_url
+Sun,Class,Star (G2V),-,"Every mission in this game is powered, directly or indirectly, by this star: sunlight charges the solar arrays, and solar storms are its outbursts.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Mass,1.989e+6,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Diameter,"1,392,000",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Surface gravity,274,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Rotation period,609.12,"hours (25.4 days, equator)",,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Mean temperature,"5,500",C (surface),,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Sun,Known moons,8,planets orbited,"Every mission in this game is powered, directly or indirectly, by this star: sunlight charges the solar arrays, and solar storms are its outbursts.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Class,Terrestrial planet,-,Smallest planet; closest to the Sun. Untoppable heat on the day side makes it a poor target for solar-powered craft.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Mass,0.330,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Diameter,"4,879",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Surface gravity,3.7,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Escape velocity,4.3,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Rotation period,1407.6,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Distance from Sun,57.9,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Orbital period,88.0,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Mean temperature,167,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Known moons,0,,Smallest planet; closest to the Sun. Untoppable heat on the day side makes it a poor target for solar-powered craft.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mercury,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Class,Terrestrial planet,-,Hottest planet (runaway greenhouse). Its retrograde rotation means a Venus day is longer than its year.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Mass,4.87,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Diameter,"12,104",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Surface gravity,8.9,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Escape velocity,10.4,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Rotation period,-5832.5,hours (retrograde),,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Distance from Sun,108.2,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Orbital period,224.7,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Mean temperature,464,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Known moons,0,,Hottest planet (runaway greenhouse). Its retrograde rotation means a Venus day is longer than its year.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Venus,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Class,Terrestrial planet (HOME),-,Home and mission control. Launch site of every lunar mission and the far end of every communications link.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Mass,5.97,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Diameter,"12,756",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Surface gravity,9.8,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Escape velocity,11.2,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Rotation period,23.9,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Distance from Sun,149.6,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Orbital period,365.2,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Mean temperature,15,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Known moons,1,the Moon,Home and mission control. Launch site of every lunar mission and the far end of every communications link.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Earth,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Class,Natural satellite of Earth,-,THE DESTINATION. One orbit = one rotation (tidally locked): the same face always points at Earth; the far side never does.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Mass,0.073,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Diameter,"3,475",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Surface gravity,1.6,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Escape velocity,2.4,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Rotation period,655.7,hours (tidally locked),,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Distance from Earth,0.384,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Orbital period (Earth),27.3,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Mean temperature,-20,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Known moons,0,,THE DESTINATION. One orbit = one rotation (tidally locked): the same face always points at Earth; the far side never does.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Class,Terrestrial planet,-,"The next horizon after the Moon; its day is about 24.6 h, the closest match to Earth.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Mass,0.642,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Diameter,"6,792",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Surface gravity,3.7,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Escape velocity,5.0,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Rotation period,24.6,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Distance from Sun,228.0,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Orbital period,687.0,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Mean temperature,-65,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Known moons,2,"Phobos, Deimos","The next horizon after the Moon; its day is about 24.6 h, the closest match to Earth.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Mars,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Class,Gas giant,-,Largest planet; more than twice as massive as all the other planets combined. Its magnetosphere is an extreme radiation environment.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Mass,1898,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Diameter,"142,984",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Surface gravity,23.1,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Escape velocity,59.5,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Rotation period,9.9,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Distance from Sun,778.5,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Orbital period,4331,Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Mean temperature,-110,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Known moons,95,,Largest planet; more than twice as massive as all the other planets combined. Its magnetosphere is an extreme radiation environment.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Jupiter,Ring system,Yes,faint dust rings,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Class,Gas giant,-,"Ringed gas giant famous for its icy rings, which span ~280,000 km yet are often only tens of metres thick.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Mass,568,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Diameter,"120,536",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Surface gravity,9.0,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Escape velocity,35.5,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Rotation period,10.7,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Distance from Sun,1432.0,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Orbital period,"10,747",Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Mean temperature,-140,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Known moons,274,as recognised 2025,"Ringed gas giant famous for its icy rings, which span ~280,000 km yet are often only tens of metres thick.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Saturn,Ring system,Yes,bright ice rings,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Class,Ice giant,-,"Rolls around the Sun on its side (98 degree axial tilt), likely from a giant impact.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Mass,86.8,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Diameter,"51,118",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Surface gravity,8.7,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Escape velocity,21.3,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Rotation period,-17.2,hours (retrograde),,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Distance from Sun,2867.0,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Orbital period,"30,589",Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Mean temperature,-195,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Known moons,28,,"Rolls around the Sun on its side (98 degree axial tilt), likely from a giant impact.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Uranus,Ring system,Yes,faint dark rings,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Class,Ice giant,-,"Windiest world: supersonic winds exceed 2,000 km/h. Farthest planet from the Sun.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Mass,102,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Diameter,"49,528",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Surface gravity,11.0,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Escape velocity,23.5,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Rotation period,16.1,hours,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Distance from Sun,4515.0,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Orbital period,"59,800",Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Mean temperature,-200,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Known moons,16,,"Windiest world: supersonic winds exceed 2,000 km/h. Farthest planet from the Sun.",NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Neptune,Ring system,Yes,faint dark rings,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Class,Dwarf planet (Kuiper belt),-,Dwarf planet beyond Neptune. Pluto is smaller than the Moon but has five moons of its own.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Mass,0.0130,10^24 kg,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Diameter,"2,376",km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Surface gravity,0.7,m/s^2,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Escape velocity,1.3,km/s,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Rotation period,-153.3,hours (retrograde),,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Distance from Sun,5906.4,10^6 km,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Orbital period,"90,560",Earth days,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Mean temperature,-225,C,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Known moons,5,,Dwarf planet beyond Neptune. Pluto is smaller than the Moon but has five moons of its own.,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Pluto,Ring system,No,,,NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Diameter relative to Earth,0.27,ratio,Derived: 3475/12756. The Moon is a surprisingly large moon for its planet.,Derived from NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+Moon,Gravity relative to Earth,0.165,ratio,Derived: 1.6/9.8. You could jump six times higher - if your spacesuit weighed nothing.,Derived from NASA NSSDCA Planetary Fact Sheet,https://nssdc.gsfc.nasa.gov/planetary/factsheet/
